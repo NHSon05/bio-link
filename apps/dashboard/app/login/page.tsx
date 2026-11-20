@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { BrandMark } from "@/components/ui/topbar";
+import { BrandMark } from "@/components/topbar";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { safeNext } from "@/lib/auth";
