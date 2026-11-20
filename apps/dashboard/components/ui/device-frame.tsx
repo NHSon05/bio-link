@@ -9,7 +9,7 @@ export function PhoneFrame({ className, children, ...props }: ComponentProps<"di
     <div
       data-slot="phone-frame"
       className={cn(
-        "relative h-[650px] w-[320px] max-w-full overflow-hidden rounded-[44px] border-[9px] border-[#282828] bg-[#282828] shadow-float",
+        "border-ink bg-ink relative h-[650px] w-[320px] max-w-full overflow-hidden rounded-[44px] border-[9px] shadow-float",
         className,
       )}
       {...props}

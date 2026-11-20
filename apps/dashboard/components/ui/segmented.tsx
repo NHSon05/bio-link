@@ -28,7 +28,7 @@ export function Segmented<T extends string>({ options, value, onValueChange, cla
         <ToggleGroupItem
           key={option.value}
           value={option.value}
-          className="h-auto rounded-full! px-4 py-[7px] text-[13px] font-normal text-muted-foreground hover:bg-transparent data-[state=on]:bg-primary data-[state=on]:font-medium data-[state=on]:text-primary-foreground"
+          className="h-auto rounded-full! px-4 py-[7px] text-sm font-normal text-muted-foreground hover:bg-transparent data-[state=on]:bg-primary data-[state=on]:font-medium data-[state=on]:text-primary-foreground"
         >
           {option.label}
         </ToggleGroupItem>

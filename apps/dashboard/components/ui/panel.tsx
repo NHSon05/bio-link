@@ -16,7 +16,7 @@ export function Panel({ title, actions, hint, className, children, ...props }: P
     <Card className={cn("gap-3.5 [--card-spacing:--spacing(6)]", className)} {...props}>
       {(title || actions || hint) && (
         <CardHeader>
-          {title && <CardTitle className="text-base font-semibold tracking-[-0.02em]">{title}</CardTitle>}
+          {title && <CardTitle className="text-base font-semibold tracking-tight">{title}</CardTitle>}
           {hint && <CardDescription className="text-xs leading-[1.55]">{hint}</CardDescription>}
           {actions && <CardAction className="flex flex-wrap gap-1.5">{actions}</CardAction>}
         </CardHeader>
