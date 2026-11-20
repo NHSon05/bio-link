@@ -319,12 +319,12 @@ export default function Editor({ landingUrl, email }: Props) {
                       })
                     }
                     className={cn(
-                      "flex flex-col gap-1 rounded-[22px] border-[1.5px] border-transparent bg-muted p-3 text-left text-[13px] font-semibold",
+                      "border-thick flex flex-col gap-1 rounded-[22px] border-transparent bg-muted p-3 text-left text-sm font-semibold",
                       draft.template === id && "border-olive bg-accent",
                     )}
                   >
                     {templates[id].name}
-                    <small className="text-[11px] leading-snug font-normal text-muted-foreground">
+                    <small className="text-2xs leading-snug font-normal text-muted-foreground">
                       {templates[id].desktop}
                     </small>
                   </button>
@@ -460,12 +460,12 @@ export default function Editor({ landingUrl, email }: Props) {
                   return (
                     <section key={r} className="rounded-3xl bg-muted p-3">
                       <div className="mx-1 mb-2.5 flex flex-wrap items-center gap-2">
-                        <h3 className="text-[13.5px] font-semibold tracking-[-0.01em]">{spec.label ?? r}</h3>
+                        <h3 className="text-md font-semibold tracking-[-0.01em]">{spec.label ?? r}</h3>
                         <Badge variant="outline" className="bg-card">
                           {ids.length}
                           {spec.max ? ` / ${spec.max}` : ""}
                         </Badge>
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-2xs text-muted-foreground">
                           {(layout[r].rank ?? spec.rank ?? r === "main") ? "tự xếp theo viral" : "giữ thứ tự"}
                         </span>
                         {r === "main" && spec.variants && (
@@ -499,7 +499,7 @@ export default function Editor({ landingUrl, email }: Props) {
                       <ul className="flex flex-col gap-2">
                         {ids.map((id, i) => byId.get(id) && blockRow(byId.get(id)!, r, i, ids.length))}
                         {!ids.length && (
-                          <li className="rounded-2xl border-[1.5px] border-dashed px-3 py-3.5 text-center text-xs text-muted-foreground">
+                          <li className="border-thick rounded-2xl border-dashed px-3 py-3.5 text-center text-xs text-muted-foreground">
                             Trống
                           </li>
                         )}
@@ -509,8 +509,8 @@ export default function Editor({ landingUrl, email }: Props) {
                 })}
 
                 {unplaced.length > 0 && (
-                  <section className="rounded-3xl border-[1.5px] border-dashed p-3">
-                    <h3 className="mx-1 mb-2.5 text-[13.5px] font-semibold">Block chưa dùng</h3>
+                  <section className="border-thick rounded-3xl border-dashed p-3">
+                    <h3 className="text-md mx-1 mb-2.5 font-semibold">Block chưa dùng</h3>
                     <ul className="flex flex-col gap-2">
                       {unplaced.map((b, i) => blockRow(b, null, i, unplaced.length))}
                     </ul>
