@@ -8,8 +8,17 @@ export const REGIONS = ["hero", "main", "footer"] as const; // header luôn là 
 export type RegionName = (typeof REGIONS)[number];
 
 export const BLOCK_TYPES = [
-  "hero-video", "carousel", "card", "link", "banner", "release",
-  "video", "events", "products", "subscribe", "shop",
+  "hero-video",
+  "carousel",
+  "card",
+  "link",
+  "banner",
+  "release",
+  "video",
+  "events",
+  "products",
+  "subscribe",
+  "shop",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -95,11 +104,13 @@ export const SiteSchema = z.object({
   source: z.object({ platform: z.string(), pageId: z.string() }).optional(),
   template: z.string().default("classic"),
   theme: ThemeSchema.default({}),
-  layout: z.object({
-    hero: RegionLayoutSchema.optional(),
-    main: RegionLayoutSchema.optional(),
-    footer: RegionLayoutSchema.optional(),
-  }).default({}),
+  layout: z
+    .object({
+      hero: RegionLayoutSchema.optional(),
+      main: RegionLayoutSchema.optional(),
+      footer: RegionLayoutSchema.optional(),
+    })
+    .default({}),
   nav: z.boolean().optional(),
   profile: z.object({
     cover: z.string().optional(),
@@ -134,7 +145,16 @@ export type ProductDb = z.infer<typeof ProductDbSchema>;
 
 // ---------- Logic (giữ giống demo/assets/render.js) ----------
 const WIDE_BY_DEFAULT = new Set<string>([
-  "hero-video", "carousel", "banner", "link", "release", "video", "events", "products", "subscribe", "shop",
+  "hero-video",
+  "carousel",
+  "banner",
+  "link",
+  "release",
+  "video",
+  "events",
+  "products",
+  "subscribe",
+  "shop",
 ]);
 
 export function isWide(b: Block): boolean {
@@ -185,7 +205,8 @@ export function sortBlocks<T extends Pick<Block, "pinned" | "score" | "published
   return blocks
     .map((b, i) => ({ b, i }))
     .sort((x, y) => {
-      const px = x.b.pinned ? 1 : 0, py = y.b.pinned ? 1 : 0;
+      const px = x.b.pinned ? 1 : 0,
+        py = y.b.pinned ? 1 : 0;
       if (px !== py) return py - px;
       const sx = typeof x.b.score === "number" ? x.b.score : -1;
       const sy = typeof y.b.score === "number" ? y.b.score : -1;

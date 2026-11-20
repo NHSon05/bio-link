@@ -1,0 +1,12 @@
+pnpm-lock.yaml
+node_modules/
+dist/
+build/
+.next/
+.astro/
+.vercel/
+next-env.d.ts
+apps/landing/public/runtime.js
+packages/runtime/build/
+supabase/.temp/
+plan.html

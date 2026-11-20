@@ -10,22 +10,14 @@
   },
   "layout": {
     "hero": {
-      "blocks": [
-        "b1"
-      ]
+      "blocks": ["b1"]
     },
     "main": {
       "variant": "list",
-      "blocks": [
-        "p2",
-        "p1",
-        "p3"
-      ]
+      "blocks": ["p2", "p1", "p3"]
     },
     "footer": {
-      "blocks": [
-        "l1"
-      ]
+      "blocks": ["l1"]
     }
   },
   "profile": {

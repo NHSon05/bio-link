@@ -1,21 +1,37 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { REGIONS, layoutOf, type Block, type RegionName, type Site } from "@bio-link/schema";
 import { templates, templateIds } from "@bio-link/templates";
+import { Badge } from "@bio-link/ui/components/badge";
+import { Button, buttonVariants } from "@bio-link/ui/components/button";
+import { BrowserFrame, PhoneFrame } from "@bio-link/ui/components/device-frame";
+import { Input } from "@bio-link/ui/components/input";
+import { Label } from "@bio-link/ui/components/label";
+import { Panel, StatusPill } from "@bio-link/ui/components/panel";
+import { Segmented } from "@bio-link/ui/components/segmented";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@bio-link/ui/components/select";
+import { Textarea } from "@bio-link/ui/components/textarea";
+import { Topbar } from "@bio-link/ui/components/topbar";
+import { cn } from "@bio-link/ui/lib/utils";
+import { signOut } from "@/app/login/actions";
+import { siteRequest } from "@/lib/siteRequest";
 
 type Summary = { slug: string; title: string; canEdit: boolean };
 type Status = { kind: "idle" | "saving" | "saved" | "error"; msg?: string };
-type Props = {
-  landingUrl: string;
-  siteRequest: <T>(path: string, init?: RequestInit) => Promise<T>;
-  onSignOut: () => Promise<void>;
-};
+type Props = { landingUrl: string; email: string };
+type Device = "mobile" | "desktop";
 
-const input = "w-full rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-3 py-2 text-sm outline-none focus:border-black/40 dark:focus:border-white/40";
-const btn = "rounded-lg px-3 py-1.5 text-sm border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40";
+// Radix Select cannot use "" as an item value.
+const NONE = "__none";
+const FONTS = ["Sora", "Manrope", "Inter", "DM Sans", "Be Vietnam Pro"];
+const DEVICES: { value: Device; label: string }[] = [
+  { value: "mobile", label: "Mobile" },
+  { value: "desktop", label: "Desktop" },
+];
 
-export default function Editor({ landingUrl, siteRequest, onSignOut }: Props) {
+export default function Editor({ landingUrl, email }: Props) {
   const [list, setList] = useState<Summary[] | null>(null);
   const [slug, setSlug] = useState("");
   const [saved, setSaved] = useState<Site | null>(null);
@@ -23,32 +39,36 @@ export default function Editor({ landingUrl, siteRequest, onSignOut }: Props) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [srcDoc, setSrcDoc] = useState("");
   const [previewErr, setPreviewErr] = useState("");
-  const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
+  const [device, setDevice] = useState<Device>("mobile");
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
-    siteRequest<Summary[]>("/api/sites", { signal: controller.signal }).then((s) => {
-      setList(s);
-      setSlug(s[0]?.slug ?? "");
-    }).catch((error: Error) => {
-      if (!controller.signal.aborted) setLoadError(error.message);
-    });
+    siteRequest<Summary[]>("/api/sites", { signal: controller.signal })
+      .then((s) => {
+        setList(s);
+        setSlug(s[0]?.slug ?? "");
+      })
+      .catch((error: Error) => {
+        if (!controller.signal.aborted) setLoadError(error.message);
+      });
     return () => controller.abort();
-  }, [siteRequest]);
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
     const controller = new AbortController();
-    siteRequest<Site>(`/api/sites/${slug}`, { signal: controller.signal }).then((s) => {
-      setSaved(s);
-      setDraft(structuredClone(s));
-      setStatus({ kind: "idle" });
-    }).catch((error: Error) => {
-      if (!controller.signal.aborted) setLoadError(error.message);
-    });
+    siteRequest<Site>(`/api/sites/${slug}`, { signal: controller.signal })
+      .then((s) => {
+        setSaved(s);
+        setDraft(structuredClone(s));
+        setStatus({ kind: "idle" });
+      })
+      .catch((error: Error) => {
+        if (!controller.signal.aborted) setLoadError(error.message);
+      });
     return () => controller.abort();
-  }, [slug, siteRequest]);
+  }, [slug]);
 
   // Gửi bản nháp tới Astro sau khi người dùng ngừng chỉnh sửa 300ms.
   useEffect(() => {
@@ -64,7 +84,10 @@ export default function Editor({ landingUrl, siteRequest, onSignOut }: Props) {
         });
         const html = await r.text();
         if (controller.signal.aborted) return;
-        if (!r.ok) { setPreviewErr(html.replace(/<[^>]+>/g, "")); return; }
+        if (!r.ok) {
+          setPreviewErr(html.replace(/<[^>]+>/g, "").trim() || `Landing trả về lỗi ${r.status}.`);
+          return;
+        }
         setPreviewErr("");
         // <base> để ảnh, CSS, runtime.js trong srcdoc trỏ về server landing
         setSrcDoc(html.replace(/<head>/i, `<head><base href="${landingUrl}/">`));
@@ -79,7 +102,7 @@ export default function Editor({ landingUrl, siteRequest, onSignOut }: Props) {
   }, [draft, landingUrl, slug]);
 
   const dirty = useMemo(() => JSON.stringify(saved) !== JSON.stringify(draft), [saved, draft]);
-  const tpl = draft ? templates[draft.template] ?? templates.classic : null;
+  const tpl = draft ? (templates[draft.template] ?? templates.classic) : null;
 
   function update(fn: (d: Site) => void) {
     setDraft((d) => {
@@ -101,9 +124,10 @@ export default function Editor({ landingUrl, siteRequest, onSignOut }: Props) {
       });
       setSaved(site);
       setDraft(structuredClone(site));
-      setList((current) => current?.map((entry) => entry.slug === site.slug
-        ? { ...entry, title: site.profile.title }
-        : entry) ?? null);
+      setList(
+        (current) =>
+          current?.map((entry) => (entry.slug === site.slug ? { ...entry, title: site.profile.title } : entry)) ?? null,
+      );
       setStatus({
         kind: "saved",
         msg: publish ? "Đã xuất bản vào Supabase. Trang tĩnh sẽ cập nhật sau lần build tiếp theo." : "Đã lưu bản nháp.",
@@ -115,31 +139,58 @@ export default function Editor({ landingUrl, siteRequest, onSignOut }: Props) {
 
   const saving = status.kind === "saving";
   const canEdit = list?.find((entry) => entry.slug === slug)?.canEdit ?? false;
-  const accountHeader = (
-    <header className="flex items-center gap-2">
-      <h1 className="text-lg font-semibold">bio-link</h1>
+  const locked = !canEdit || saving;
+
+  const topbar = (
+    <Topbar items={[{ href: "/", label: "Editor" }]} current="/" linkAs={Link} className="flex-wrap border-b">
       {!!list?.length && (
-        <select className={`${input} ml-auto max-w-56`} value={slug} disabled={saving} onChange={(e) => {
-          setLoadError("");
-          setSrcDoc("");
-          setPreviewErr("");
-          setSlug(e.target.value);
-        }} aria-label="Chọn slug">
-          {list.map((site) => <option key={site.slug} value={site.slug}>{site.title} · /{site.slug}</option>)}
-        </select>
+        <Select
+          value={slug}
+          disabled={saving}
+          onValueChange={(value) => {
+            setLoadError("");
+            setSrcDoc("");
+            setPreviewErr("");
+            setSlug(value);
+          }}
+        >
+          <SelectTrigger aria-label="Chọn slug" className="max-w-56 rounded-full bg-card">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {list.map((site) => (
+              <SelectItem key={site.slug} value={site.slug}>
+                {site.title} · /{site.slug}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
-      <button className={btn} disabled={saving} onClick={onSignOut}>Đăng xuất</button>
-    </header>
+      <span className="hidden text-sm text-muted-foreground md:inline">{email}</span>
+      <form action={signOut}>
+        <Button type="submit" variant="outline" size="sm" disabled={saving}>
+          Đăng xuất
+        </Button>
+      </form>
+    </Topbar>
   );
 
   if (!draft || !tpl || draft.slug !== slug || loadError) {
     return (
-      <main className="flex flex-col gap-4 p-8 text-sm">
-        {accountHeader}
-        {loadError
-          ? <p role="alert" className="text-red-600">{loadError}</p>
-          : <p>{list?.length === 0 ? "Bạn chưa được giao trang nào." : "Đang tải…"}</p>}
-      </main>
+      <div className="flex min-h-screen flex-col">
+        {topbar}
+        <main className="p-8 text-sm">
+          {loadError ? (
+            <p role="alert" className="text-destructive">
+              {loadError}
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              {list?.length === 0 ? "Bạn chưa được giao trang nào." : "Đang tải…"}
+            </p>
+          )}
+        </main>
+      </div>
     );
   }
 
@@ -179,127 +230,360 @@ export default function Editor({ landingUrl, siteRequest, onSignOut }: Props) {
   }
 
   const blockRow = (b: Block, region: RegionName | null, i: number, total: number) => (
-    <li key={b.id} className={`flex items-center gap-2 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm ${b.hidden ? "opacity-50" : ""}`}>
-      <code className="rounded bg-black/5 dark:bg-white/10 px-1.5 text-xs">{b.type}</code>
-      <span className="flex-1 truncate">{b.title || b.text || b.id}</span>
-      {region && <>
-        <button className={btn} disabled={i === 0} onClick={() => move(region, i, -1)} aria-label="Lên">↑</button>
-        <button className={btn} disabled={i === total - 1} onClick={() => move(region, i, 1)} aria-label="Xuống">↓</button>
-      </>}
-      <button className={`${btn} ${b.pinned ? "bg-lime-200 dark:bg-lime-800" : ""}`} onClick={() => toggle(b.id, "pinned")} title="Ghim lên đầu vùng">📌</button>
-      <button className={btn} onClick={() => toggle(b.id, "hidden")} title="Ẩn/hiện">{b.hidden ? "🙈" : "👁"}</button>
-      <select className="rounded-lg border border-black/10 dark:border-white/15 bg-transparent px-1 py-1 text-xs" value={region ?? ""} onChange={(e) => moveTo(b.id, region, e.target.value as RegionName | "")}>
-        <option value="">— không dùng —</option>
-        {REGIONS.map((r) => (
-          <option key={r} value={r} disabled={!allows(r, b)}>{tpl.regions[r].label ?? r}{allows(r, b) ? "" : " (không cho phép)"}</option>
-        ))}
-      </select>
+    <li
+      key={b.id}
+      className={cn(
+        "flex flex-wrap items-center gap-1.5 rounded-2xl bg-card px-3 py-2 text-sm",
+        b.hidden && "opacity-50",
+      )}
+    >
+      <Badge className="bg-olive text-[10px] tracking-[0.08em] text-olive-foreground uppercase">{b.type}</Badge>
+      <span className="min-w-0 flex-1 truncate">{b.title || b.text || b.id}</span>
+      {region && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={i === 0}
+            onClick={() => move(region, i, -1)}
+            aria-label="Lên"
+          >
+            ↑
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={i === total - 1}
+            onClick={() => move(region, i, 1)}
+            aria-label="Xuống"
+          >
+            ↓
+          </Button>
+        </>
+      )}
+      <Button
+        variant={b.pinned ? "olive" : "ghost"}
+        size="icon-sm"
+        onClick={() => toggle(b.id, "pinned")}
+        aria-pressed={!!b.pinned}
+        title="Ghim lên đầu vùng"
+      >
+        📌
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => toggle(b.id, "hidden")}
+        aria-pressed={!!b.hidden}
+        title="Ẩn/hiện"
+      >
+        {b.hidden ? "🙈" : "👁"}
+      </Button>
+      <Select
+        value={region ?? NONE}
+        disabled={locked}
+        onValueChange={(value) => moveTo(b.id, region, value === NONE ? "" : (value as RegionName))}
+      >
+        <SelectTrigger size="sm" aria-label="Chuyển vùng" className="w-28 rounded-full text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NONE}>— không dùng —</SelectItem>
+          {REGIONS.map((r) => (
+            <SelectItem key={r} value={r} disabled={!allows(r, b)}>
+              {tpl.regions[r].label ?? r}
+              {allows(r, b) ? "" : " (không cho phép)"}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </li>
   );
 
   return (
-    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(380px,520px)_1fr]">
-      <aside className="flex flex-col gap-5 overflow-y-auto border-r border-black/10 dark:border-white/10 p-5 lg:h-screen">
-        {accountHeader}
+    <div className="flex min-h-screen flex-col">
+      {topbar}
+      <div className="grid flex-1 grid-cols-1 gap-6 px-4 pt-4 md:px-6 lg:grid-cols-[minmax(380px,560px)_1fr]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <fieldset className="contents" disabled={locked} aria-label="Nội dung trang">
+            <Panel title="Template" hint={tpl.description}>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                {templateIds.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={draft.template === id}
+                    onClick={() =>
+                      update((d) => {
+                        d.template = id;
+                      })
+                    }
+                    className={cn(
+                      "flex flex-col gap-1 rounded-[22px] border-[1.5px] border-transparent bg-muted p-3 text-left text-[13px] font-semibold",
+                      draft.template === id && "border-olive bg-accent",
+                    )}
+                  >
+                    {templates[id].name}
+                    <small className="text-[11px] leading-snug font-normal text-muted-foreground">
+                      {templates[id].desktop}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            </Panel>
 
-        <fieldset className="contents" disabled={!canEdit || saving} aria-label="Nội dung trang">
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold">Template</h2>
-          <div className="grid grid-cols-3 gap-2">
-            {templateIds.map((id) => (
-              <button key={id} onClick={() => update((d) => { d.template = id; })}
-                className={`rounded-lg border px-3 py-2 text-left text-sm ${draft.template === id ? "border-black dark:border-white" : "border-black/10 dark:border-white/15"}`}>
-                <div className="font-medium">{templates[id].name}</div>
-                <div className="text-xs opacity-60">{templates[id].desktop}</div>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs opacity-60">{tpl.description}</p>
-        </section>
+            <Panel title="Theme" hint="Để trống = mặc định của template.">
+              <div className="grid grid-cols-2 gap-3">
+                {(["bg", "accent"] as const).map((k) => (
+                  <div key={k} className="grid gap-1.5">
+                    <Label htmlFor={`theme-${k}`}>{k === "bg" ? "Nền" : "Màu nhấn"}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`theme-${k}`}
+                        type="color"
+                        className="h-9 w-16 rounded-full p-1"
+                        value={draft.theme[k] || tpl.themeDefaults[k] || "#000000"}
+                        onChange={(e) =>
+                          update((d) => {
+                            d.theme[k] = e.target.value;
+                          })
+                        }
+                      />
+                      {draft.theme[k] && (
+                        <Button
+                          variant="link"
+                          size="xs"
+                          onClick={() =>
+                            update((d) => {
+                              delete d.theme[k];
+                            })
+                          }
+                        >
+                          Đặt lại
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div className="grid gap-1.5">
+                  <Label>Font</Label>
+                  <Select
+                    value={draft.theme.font ?? NONE}
+                    disabled={locked}
+                    onValueChange={(value) =>
+                      update((d) => {
+                        if (value === NONE) delete d.theme.font;
+                        else d.theme.font = value;
+                      })
+                    }
+                  >
+                    <SelectTrigger aria-label="Font" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Mặc định ({tpl.themeDefaults.font})</SelectItem>
+                      {FONTS.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {f}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="theme-radius">Bo góc (px)</Label>
+                  <Input
+                    id="theme-radius"
+                    type="number"
+                    min={0}
+                    max={40}
+                    value={draft.theme.radius ?? ""}
+                    placeholder={String(tpl.themeDefaults.radius ?? 28)}
+                    onChange={(e) =>
+                      update((d) => {
+                        if (e.target.value === "") delete d.theme.radius;
+                        else d.theme.radius = Number(e.target.value);
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </Panel>
 
-        <section className="grid grid-cols-2 gap-3">
-          <h2 className="col-span-2 text-sm font-semibold">Theme <span className="font-normal opacity-60">(để trống = mặc định của template)</span></h2>
-          {(["bg", "accent"] as const).map((k) => (
-            <label key={k} className="flex items-center gap-2 text-sm">
-              <input type="color" value={draft.theme[k] || tpl.themeDefaults[k] || "#000000"} onChange={(e) => update((d) => { d.theme[k] = e.target.value; })} />
-              {k}
-              {draft.theme[k] && <button className="text-xs underline opacity-60" onClick={() => update((d) => { delete d.theme[k]; })}>reset</button>}
-            </label>
-          ))}
-          <label className="text-sm">Font
-            <select className={input} value={draft.theme.font ?? ""} onChange={(e) => update((d) => { if (e.target.value) d.theme.font = e.target.value; else delete d.theme.font; })}>
-              <option value="">Mặc định ({tpl.themeDefaults.font})</option>
-              {["Sora", "Manrope", "Inter", "DM Sans", "Be Vietnam Pro"].map((f) => <option key={f}>{f}</option>)}
-            </select>
-          </label>
-          <label className="text-sm">Bo góc (px)
-            <input className={input} type="number" min={0} max={40} value={draft.theme.radius ?? ""} placeholder={String(tpl.themeDefaults.radius ?? 28)}
-              onChange={(e) => update((d) => { if (e.target.value === "") delete d.theme.radius; else d.theme.radius = Number(e.target.value); })} />
-          </label>
-        </section>
+            <Panel title="Profile">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="profile-title">Tên</Label>
+                  <Input
+                    id="profile-title"
+                    value={draft.profile.title}
+                    onChange={(e) =>
+                      update((d) => {
+                        d.profile.title = e.target.value;
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="profile-subtitle">Subtitle</Label>
+                  <Input
+                    id="profile-subtitle"
+                    value={draft.profile.subtitle ?? ""}
+                    onChange={(e) =>
+                      update((d) => {
+                        d.profile.subtitle = e.target.value;
+                      })
+                    }
+                  />
+                </div>
+                <div className="col-span-2 grid gap-1.5">
+                  <Label htmlFor="profile-about">Giới thiệu (chỉ hiện trên desktop)</Label>
+                  <Textarea
+                    id="profile-about"
+                    rows={2}
+                    value={draft.profile.about ?? ""}
+                    onChange={(e) =>
+                      update((d) => {
+                        d.profile.about = e.target.value;
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </Panel>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold">Profile</h2>
-          <input className={input} value={draft.profile.title} onChange={(e) => update((d) => { d.profile.title = e.target.value; })} placeholder="Tên" />
-          <input className={input} value={draft.profile.subtitle ?? ""} onChange={(e) => update((d) => { d.profile.subtitle = e.target.value; })} placeholder="Subtitle" />
-          <textarea className={input} rows={2} value={draft.profile.about ?? ""} onChange={(e) => update((d) => { d.profile.about = e.target.value; })} placeholder="Giới thiệu" />
-        </section>
+            <Panel title="Vùng & block" hint="Chỉ chuyển block vào vùng mà template cho phép. Ghim để cố định vị trí.">
+              <div className="flex flex-col gap-3">
+                {REGIONS.map((r) => {
+                  const ids = layout[r].blocks;
+                  const spec = tpl.regions[r];
+                  return (
+                    <section key={r} className="rounded-3xl bg-muted p-3">
+                      <div className="mx-1 mb-2.5 flex flex-wrap items-center gap-2">
+                        <h3 className="text-[13.5px] font-semibold tracking-[-0.01em]">{spec.label ?? r}</h3>
+                        <Badge variant="outline" className="bg-card">
+                          {ids.length}
+                          {spec.max ? ` / ${spec.max}` : ""}
+                        </Badge>
+                        <span className="text-[11px] text-muted-foreground">
+                          {(layout[r].rank ?? spec.rank ?? r === "main") ? "tự xếp theo viral" : "giữ thứ tự"}
+                        </span>
+                        {r === "main" && spec.variants && (
+                          <Select
+                            value={layout.main.variant ?? spec.defaultVariant ?? spec.variants[0]}
+                            disabled={locked}
+                            onValueChange={(value) =>
+                              update((d) => {
+                                const L = layoutOf(d);
+                                d.layout = { ...L, main: { ...L.main, variant: value as never } };
+                              })
+                            }
+                          >
+                            <SelectTrigger
+                              size="sm"
+                              aria-label="Kiểu hiển thị"
+                              className="ml-auto rounded-full bg-card text-xs"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {spec.variants.map((v) => (
+                                <SelectItem key={v} value={v}>
+                                  {v}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                      <ul className="flex flex-col gap-2">
+                        {ids.map((id, i) => byId.get(id) && blockRow(byId.get(id)!, r, i, ids.length))}
+                        {!ids.length && (
+                          <li className="rounded-2xl border-[1.5px] border-dashed px-3 py-3.5 text-center text-xs text-muted-foreground">
+                            Trống
+                          </li>
+                        )}
+                      </ul>
+                    </section>
+                  );
+                })}
 
-        {REGIONS.map((r) => {
-          const ids = layout[r].blocks;
-          const spec = tpl.regions[r];
-          return (
-            <section key={r} className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold">{spec.label ?? r}</h2>
-                <span className="text-xs opacity-60">{spec.max ? `tối đa ${spec.max} · ` : ""}{(layout[r].rank ?? spec.rank ?? r === "main") ? "tự xếp theo viral" : "giữ thứ tự"}</span>
-                {r === "main" && spec.variants && (
-                  <select className="ml-auto rounded-lg border border-black/10 dark:border-white/15 bg-transparent px-2 py-1 text-xs" value={layout.main.variant ?? spec.defaultVariant ?? spec.variants[0]}
-                    onChange={(e) => update((d) => { const L = layoutOf(d); d.layout = { ...L, main: { ...L.main, variant: e.target.value as never } }; })}>
-                    {spec.variants.map((v) => <option key={v}>{v}</option>)}
-                  </select>
+                {unplaced.length > 0 && (
+                  <section className="rounded-3xl border-[1.5px] border-dashed p-3">
+                    <h3 className="mx-1 mb-2.5 text-[13.5px] font-semibold">Block chưa dùng</h3>
+                    <ul className="flex flex-col gap-2">
+                      {unplaced.map((b, i) => blockRow(b, null, i, unplaced.length))}
+                    </ul>
+                  </section>
                 )}
               </div>
-              <ul className="flex flex-col gap-1.5">
-                {ids.map((id, i) => byId.get(id) && blockRow(byId.get(id)!, r, i, ids.length))}
-                {!ids.length && <li className="rounded-lg border border-dashed border-black/15 dark:border-white/15 px-3 py-2 text-xs opacity-60">Trống</li>}
-              </ul>
-            </section>
-          );
-        })}
+            </Panel>
+          </fieldset>
 
-        {unplaced.length > 0 && (
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold">Block chưa dùng</h2>
-            <ul className="flex flex-col gap-1.5">{unplaced.map((b, i) => blockRow(b, null, i, unplaced.length))}</ul>
-          </section>
-        )}
-
-        </fieldset>
-        <footer className="sticky bottom-0 -mx-5 mt-auto flex flex-wrap items-center gap-3 border-t border-black/10 dark:border-white/10 bg-background px-5 py-3">
-          {canEdit ? (
-            <>
-              <button className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-40 dark:bg-white dark:text-black" disabled={saving} onClick={() => save(true)}>Xuất bản</button>
-              <button className={btn} disabled={!dirty || saving} onClick={() => save(false)}>Lưu nháp</button>
-              <button className={btn} disabled={!dirty || saving} onClick={() => saved && setDraft(structuredClone(saved))}>Bỏ thay đổi</button>
-              <span role="status" className={`w-full text-xs ${status.kind === "error" ? "text-red-600 whitespace-pre-wrap" : "opacity-60"}`}>
-                {saving ? "Đang lưu…" : status.msg ?? (dirty ? "Có thay đổi chưa lưu" : "")}
-              </span>
-            </>
-          ) : <span className="text-xs opacity-60">Chỉ xem</span>}
-        </footer>
-      </aside>
-
-      <main className="flex flex-col items-center gap-3 bg-black/[.03] dark:bg-white/[.03] p-5 lg:h-screen">
-        <div className="flex items-center gap-2 text-sm">
-          <button className={`${btn} ${device === "mobile" ? "bg-black/10 dark:bg-white/15" : ""}`} onClick={() => setDevice("mobile")}>Mobile</button>
-          <button className={`${btn} ${device === "desktop" ? "bg-black/10 dark:bg-white/15" : ""}`} onClick={() => setDevice("desktop")}>Desktop</button>
-          <a className="underline opacity-70" href={`${landingUrl}/${draft.slug}/`} target="_blank" rel="noreferrer">Mở trang công khai ↗</a>
+          <footer className="sticky bottom-0 -mx-4 mt-auto flex flex-wrap items-center gap-2 border-t bg-background/90 px-4 py-3 backdrop-blur-md md:-mx-6 md:px-6 lg:mr-0">
+            {canEdit ? (
+              <>
+                <StatusPill dirty={dirty}>{dirty ? "Có thay đổi chưa lưu" : "Đã lưu"}</StatusPill>
+                <div className="ml-auto flex flex-wrap gap-1.5">
+                  <Button
+                    variant="outline"
+                    disabled={!dirty || saving}
+                    onClick={() => saved && setDraft(structuredClone(saved))}
+                  >
+                    ↺ Bỏ thay đổi
+                  </Button>
+                  <Button variant="outline" disabled={!dirty || saving} onClick={() => save(false)}>
+                    Lưu nháp
+                  </Button>
+                  <Button disabled={saving} onClick={() => save(true)}>
+                    Xuất bản
+                  </Button>
+                </div>
+                {(saving || status.msg) && (
+                  <span
+                    role="status"
+                    className={cn(
+                      "w-full text-xs",
+                      status.kind === "error" ? "whitespace-pre-wrap text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    {saving ? "Đang lưu…" : status.msg}
+                  </span>
+                )}
+              </>
+            ) : (
+              <StatusPill>Chỉ xem</StatusPill>
+            )}
+          </footer>
         </div>
-        {previewErr
-          ? <pre className="w-full max-w-xl whitespace-pre-wrap rounded-lg bg-red-50 p-4 text-xs text-red-700 dark:bg-red-950 dark:text-red-200">{previewErr}</pre>
-          : <iframe title="Preview" sandbox="allow-scripts" srcDoc={srcDoc} className={`flex-1 rounded-2xl border border-black/10 dark:border-white/10 bg-white shadow-sm ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />}
-      </main>
+
+        <aside className="flex min-w-0 flex-col items-center gap-3 pb-6 lg:sticky lg:top-18 lg:self-start">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Segmented aria-label="Thiết bị xem trước" options={DEVICES} value={device} onValueChange={setDevice} />
+            <a
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              href={`${landingUrl}/${draft.slug}/`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Mở trang công khai ↗
+            </a>
+          </div>
+          {previewErr ? (
+            <pre className="w-full max-w-xl rounded-2xl bg-destructive/10 p-4 text-xs whitespace-pre-wrap text-destructive">
+              {previewErr}
+            </pre>
+          ) : device === "mobile" ? (
+            <PhoneFrame>
+              <iframe title="Preview" sandbox="allow-scripts" srcDoc={srcDoc} className="size-full border-0" />
+            </PhoneFrame>
+          ) : (
+            <BrowserFrame url={`${landingUrl.replace(/^https?:\/\//, "")}/${draft.slug}`}>
+              <iframe title="Preview" sandbox="allow-scripts" srcDoc={srcDoc} className="size-full border-0" />
+            </BrowserFrame>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

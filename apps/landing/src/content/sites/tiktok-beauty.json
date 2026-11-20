@@ -11,24 +11,14 @@
   },
   "layout": {
     "hero": {
-      "blocks": [
-        "v1"
-      ]
+      "blocks": ["v1"]
     },
     "main": {
       "variant": "carousel",
-      "blocks": [
-        "p1",
-        "p2",
-        "c1",
-        "sh1"
-      ]
+      "blocks": ["p1", "p2", "c1", "sh1"]
     },
     "footer": {
-      "blocks": [
-        "l1",
-        "l2"
-      ]
+      "blocks": ["l1", "l2"]
     }
   },
   "profile": {
@@ -112,10 +102,7 @@
       "type": "shop",
       "id": "sh1",
       "title": "Mình đang dùng",
-      "collections": [
-        "beauty",
-        "fav"
-      ],
+      "collections": ["beauty", "fav"],
       "limit": 4
     },
     {

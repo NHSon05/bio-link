@@ -93,37 +93,22 @@
     {
       "id": "fav",
       "name": "Yêu thích",
-      "items": [
-        "p1",
-        "p2",
-        "p5",
-        "p6"
-      ]
+      "items": ["p1", "p2", "p5", "p6"]
     },
     {
       "id": "tech",
       "name": "Công nghệ",
-      "items": [
-        "p1",
-        "p4",
-        "p6"
-      ]
+      "items": ["p1", "p4", "p6"]
     },
     {
       "id": "fashion",
       "name": "Thời trang",
-      "items": [
-        "p3",
-        "p5",
-        "p7"
-      ]
+      "items": ["p3", "p5", "p7"]
     },
     {
       "id": "beauty",
       "name": "Làm đẹp",
-      "items": [
-        "p2"
-      ]
+      "items": ["p2"]
     }
   ]
 }

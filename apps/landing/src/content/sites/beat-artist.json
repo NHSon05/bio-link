@@ -8,23 +8,14 @@
   "theme": {},
   "layout": {
     "hero": {
-      "blocks": [
-        "r1"
-      ]
+      "blocks": ["r1"]
     },
     "main": {
       "variant": "list",
-      "blocks": [
-        "vd1",
-        "mu1",
-        "t1",
-        "m1"
-      ]
+      "blocks": ["vd1", "mu1", "t1", "m1"]
     },
     "footer": {
-      "blocks": [
-        "s1"
-      ]
+      "blocks": ["s1"]
     }
   },
   "nav": true,

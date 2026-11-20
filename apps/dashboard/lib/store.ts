@@ -28,16 +28,21 @@ export async function listSites(db: SupabaseClient) {
   const sites = [];
   const pageSize = 100;
   for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await db.from("sites")
-      .select("slug, title:draft_config->profile->>title, template:draft_config->>template, platform:draft_config->source->>platform, updatedAt:updated_at, site_members(role)")
+    const { data, error } = await db
+      .from("sites")
+      .select(
+        "slug, title:draft_config->profile->>title, template:draft_config->>template, platform:draft_config->source->>platform, updatedAt:updated_at, site_members(role)",
+      )
       .order("slug")
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
-    sites.push(...data.map(({ site_members: members, ...site }) => ({
-      ...site,
-      template: site.template ?? "classic",
-      canEdit: !!admin || members.some((member) => member.role === "editor"),
-    })));
+    sites.push(
+      ...data.map(({ site_members: members, ...site }) => ({
+        ...site,
+        template: site.template ?? "classic",
+        canEdit: !!admin || members.some((member) => member.role === "editor"),
+      })),
+    );
     if (data.length < pageSize) return sites;
   }
 }
@@ -79,7 +84,8 @@ export async function listVersions(db: SupabaseClient, slug: string, before: num
   if (siteError) throw siteError;
   if (!site) throw new SiteApiError(404, "Không tìm thấy slug");
 
-  const query = db.from("site_versions")
+  const query = db
+    .from("site_versions")
     .select("id, published_by, published_at, note, restored_from")
     .eq("site_id", site.id)
     .order("id", { ascending: false })

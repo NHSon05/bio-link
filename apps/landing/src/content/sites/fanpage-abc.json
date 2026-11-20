@@ -10,26 +10,14 @@
   },
   "layout": {
     "hero": {
-      "blocks": [
-        "v1"
-      ]
+      "blocks": ["v1"]
     },
     "main": {
       "variant": "grid-2",
-      "blocks": [
-        "p1",
-        "p2",
-        "p3",
-        "c1",
-        "sh1"
-      ]
+      "blocks": ["p1", "p2", "p3", "c1", "sh1"]
     },
     "footer": {
-      "blocks": [
-        "b1",
-        "l1",
-        "l2"
-      ]
+      "blocks": ["b1", "l1", "l2"]
     }
   },
   "nav": true,
@@ -132,11 +120,7 @@
       "id": "sh1",
       "title": "Đồ mình hay dùng",
       "navLabel": "Shop",
-      "collections": [
-        "fav",
-        "tech",
-        "fashion"
-      ],
+      "collections": ["fav", "tech", "fashion"],
       "limit": 6
     },
     {

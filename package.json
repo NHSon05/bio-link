@@ -8,6 +8,15 @@
     "build:runtime": "pnpm --filter @bio-link/runtime build",
     "build:landing": "pnpm build:runtime && pnpm --filter landing build",
     "build:dashboard": "pnpm --filter dashboard build",
-    "build": "pnpm build:landing && pnpm build:dashboard"
+    "build": "pnpm build:landing && pnpm build:dashboard",
+    "lint": "pnpm -r --if-present lint",
+    "lint:fix": "pnpm -r --if-present lint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.10.1",
+    "prettier-plugin-astro": "1.1.2",
+    "prettier-plugin-tailwindcss": "0.8.1"
   }
 }

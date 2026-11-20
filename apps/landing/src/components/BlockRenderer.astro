@@ -13,15 +13,30 @@ import Products from "./blocks/Products.astro";
 import Subscribe from "./blocks/Subscribe.astro";
 import Shop from "./blocks/Shop.astro";
 
-interface Props { b: Block; pos: number; products: ProductDb }
+interface Props {
+  b: Block;
+  pos: number;
+  products: ProductDb;
+}
 const { b, pos, products } = Astro.props;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- each block component takes its own props
 const COMPONENTS: Record<string, any> = {
-  "hero-video": HeroVideo, carousel: Carousel, card: Card, link: LinkButton, banner: Banner,
-  release: Release, video: VideoSlider, events: Events, products: Products, subscribe: Subscribe, shop: Shop,
+  "hero-video": HeroVideo,
+  carousel: Carousel,
+  card: Card,
+  link: LinkButton,
+  banner: Banner,
+  release: Release,
+  video: VideoSlider,
+  events: Events,
+  products: Products,
+  subscribe: Subscribe,
+  shop: Shop,
 };
 const C = b.hidden ? null : COMPONENTS[b.type];
 const cls = isWide(b) ? "lb-wide" : "";
 const attrs = { id: `b-${b.id}`, "data-block-id": b.id };
 ---
+
 {C && <C b={b} pos={pos} cls={cls} attrs={attrs} products={products} />}

@@ -5,13 +5,22 @@ import { artStyle } from "../../lib/icons";
 import Section from "../Section.astro";
 import TLink from "../TLink.astro";
 import Icon from "../Icon.astro";
-interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+interface Props {
+  b: Block;
+  pos: number;
+  cls: string;
+  attrs: Record<string, string>;
+}
 const { b, pos, cls, attrs } = Astro.props;
 ---
+
 <Section b={b} pos={pos} class={`lb-release ${cls}`} attrs={attrs}>
   <TLink class="lb-rel-card" href={b.url} track={b.id} pos={pos}>
     <div class="lb-rel-art" style={artStyle(b.thumbnail, b.bg as string | undefined, b.id)} />
-    <span class="lb-rel-cta"><Icon name="triangle" />{String(b.cta || "Listen now")}</span>
+    <span class="lb-rel-cta">
+      <Icon name="triangle" />
+      {String(b.cta || "Listen now")}
+    </span>
   </TLink>
   {b.text && <div class="lb-rel-name">{b.text}</div>}
 </Section>

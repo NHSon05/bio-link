@@ -7,7 +7,13 @@
 import { formatPrice, type Block, type ProductDb } from "@bio-link/schema";
 import Section from "../Section.astro";
 import ProductTile from "../ProductTile.astro";
-interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string>; products: ProductDb }
+interface Props {
+  b: Block;
+  pos: number;
+  cls: string;
+  attrs: Record<string, string>;
+  products: ProductDb;
+}
 const { b, pos, cls, attrs, products: db } = Astro.props;
 
 const ids = Array.isArray(b.collections) ? (b.collections as string[]) : [];
@@ -20,10 +26,15 @@ const tabs = cols.map((c) => {
   return { ...c, items };
 });
 ---
+
 <Section b={b} pos={pos} class={`lb-shop ${cls}`} attrs={attrs}>
   {tabs.length > 1 && (
     <div class="lb-shop-tabs">
-      {tabs.map((c, i) => <button class:list={["lb-shop-tab", { on: i === 0 }]} type="button" data-tab={i}>{c.name}</button>)}
+      {tabs.map((c, i) => (
+        <button class:list={["lb-shop-tab", { on: i === 0 }]} type="button" data-tab={i}>
+          {c.name}
+        </button>
+      ))}
     </div>
   )}
   {tabs.map((c, i) => (
@@ -31,7 +42,14 @@ const tabs = cols.map((c) => {
       <div class="lb-shop-count">{c.items.length} sản phẩm</div>
       <div class="lb-pr-grid">
         {c.items.slice(0, limit).map((p, k) => (
-          <ProductTile href={p!.affiliateUrl || p!.url} track={p!.id} pos={`${pos}.${k}`} image={p!.image} name={p!.title} price={formatPrice(p!.price, p!.currency)} />
+          <ProductTile
+            href={p!.affiliateUrl || p!.url}
+            track={p!.id}
+            pos={`${pos}.${k}`}
+            image={p!.image}
+            name={p!.title}
+            price={formatPrice(p!.price, p!.currency)}
+          />
         ))}
         {!c.items.length && <div class="lb-shop-empty">Chưa có sản phẩm</div>}
       </div>

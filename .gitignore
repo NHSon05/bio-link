@@ -7,3 +7,4 @@ dist/
 .DS_Store
 packages/runtime/build/
 apps/landing/public/runtime.js
+.claude/settings.local.json

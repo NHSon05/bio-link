@@ -2,15 +2,30 @@
 /** Form nhận email. Runtime gửi tới webhook (data-endpoint). Chưa cấu hình endpoint thì chỉ báo đã nhận. */
 import type { Block } from "@bio-link/schema";
 import Section from "../Section.astro";
-interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+interface Props {
+  b: Block;
+  pos: number;
+  cls: string;
+  attrs: Record<string, string>;
+}
 const { b, pos, cls, attrs } = Astro.props;
 const endpoint = import.meta.env.PUBLIC_SUBSCRIBE_URL ?? "";
 ---
+
 <Section b={b} pos={pos} class={`lb-subscribe ${cls}`} attrs={attrs}>
   {b.text && <p class="lb-sub-text">{b.text}</p>}
   <form class="lb-sub-form" data-subscribe={b.id} data-pos={pos} data-endpoint={endpoint}>
-    <input class="lb-sub-input" type="email" required placeholder={String(b.placeholder || "name@email.com")} aria-label="Email" name="email" />
+    <input
+      class="lb-sub-input"
+      type="email"
+      required
+      placeholder={String(b.placeholder || "name@email.com")}
+      aria-label="Email"
+      name="email"
+    />
     <input type="text" name="website" tabindex="-1" autocomplete="off" hidden />
-    <button class="lb-sub-btn" type="submit">{String(b.cta || "Subscribe")}</button>
+    <button class="lb-sub-btn" type="submit">
+      {String(b.cta || "Subscribe")}
+    </button>
   </form>
 </Section>

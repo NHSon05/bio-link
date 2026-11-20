@@ -4,16 +4,26 @@ import { blob, cssUrl } from "../../lib/icons";
 import Section from "../Section.astro";
 import TLink from "../TLink.astro";
 import Icon from "../Icon.astro";
-interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+interface Props {
+  b: Block;
+  pos: number;
+  cls: string;
+  attrs: Record<string, string>;
+}
 const { b, pos, cls, attrs } = Astro.props;
 ---
+
 <Section b={b} pos={pos} class={`lb-carousel ${cls}`} attrs={attrs}>
   <div class="lb-car-track">
     {(b.items ?? []).map((it, i) => (
       <TLink class="lb-car-item" href={it.url} track={it.id || `${b.id}-${i}`} pos={`${pos}.${i}`}>
-        {it.thumbnail
-          ? <div class="lb-car-media" style={`background-image:${cssUrl(it.thumbnail)}`} />
-          : <div class="lb-car-media" style={`background:${blob(it.id || it.text)}`}><Icon name="music" class="lb-ph-ic" /></div>}
+        {it.thumbnail ? (
+          <div class="lb-car-media" style={`background-image:${cssUrl(it.thumbnail)}`} />
+        ) : (
+          <div class="lb-car-media" style={`background:${blob(it.id || it.text)}`}>
+            <Icon name="music" class="lb-ph-ic" />
+          </div>
+        )}
         <div class="lb-car-text">{it.text}</div>
       </TLink>
     ))}

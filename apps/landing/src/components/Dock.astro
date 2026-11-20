@@ -3,17 +3,21 @@
 import type { Block } from "@bio-link/schema";
 import { TYPE_ICON } from "../lib/icons";
 import Icon from "./Icon.astro";
-interface Props { blocks: Block[] }
+interface Props {
+  blocks: Block[];
+}
 const tabs = Astro.props.blocks.filter((b) => !b.hidden && (b.title || b.navLabel));
 const items = [{ href: "#top", label: "Home", ic: "home" }].concat(
   tabs.map((b) => ({ href: `#b-${b.id}`, label: b.navLabel || b.title || "", ic: TYPE_ICON[b.type] ?? "star" })),
 );
 ---
+
 {tabs.length >= 2 && (
   <nav class="lb-dock">
     {items.map((it, i) => (
       <a class:list={["lb-dock-i", { on: i === 0 }]} href={it.href} title={it.label} draggable="false" data-dock>
-        <Icon name={it.ic} /><span class="lb-dock-t">{it.label}</span>
+        <Icon name={it.ic} />
+        <span class="lb-dock-t">{it.label}</span>
       </a>
     ))}
   </nav>

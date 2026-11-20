@@ -26,7 +26,8 @@ export async function loadPublishedSites(): Promise<Site[]> {
   const sites: Site[] = [];
   const pageSize = 100;
   for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await db.from("sites")
+    const { data, error } = await db
+      .from("sites")
       .select("slug, published_config")
       .not("published_config", "is", null)
       .order("slug")
@@ -40,7 +41,7 @@ export async function loadPublishedSites(): Promise<Site[]> {
 /** Keep the HTML and ranking JSON on the same snapshot during a static build. */
 export function loadBuildSites(): Promise<Site[]> {
   if (import.meta.env.DEV) return loadPublishedSites();
-  return buildSnapshot ??= loadPublishedSites();
+  return (buildSnapshot ??= loadPublishedSites());
 }
 
 export const products = ProductDbSchema.parse(productsJson);

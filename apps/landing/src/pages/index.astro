@@ -1,25 +1,30 @@
 ---
-/** Trang gốc: chỉ để dev xem nhanh danh sách slug. Production có thể redirect hoặc bỏ. */
+/** Trang gốc: hub nội bộ để dev xem nhanh các slug. Production có thể redirect hoặc bỏ. */
+import SiteHub from "../components/hub/SiteHub";
 import { loadBuildSites } from "../lib/data";
+import "../styles/ui.css";
 
-const sites = await loadBuildSites();
+const sites = (await loadBuildSites()).map((site) => ({
+  slug: site.slug,
+  title: site.profile.title,
+  template: site.template,
+  platform: site.source?.platform,
+}));
+const dashboardUrl = import.meta.env.PUBLIC_DASHBOARD_URL ?? "http://localhost:3000";
 ---
+
 <!doctype html>
 <html lang="vi">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="noindex" />
-  <title>bio-link landing</title>
-  <style>
-    body{font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:560px;margin:40px auto;padding:0 16px;color:#282828;background:#F7F7F7}
-    a{color:inherit} li{margin:6px 0} code{background:#ececea;padding:1px 6px;border-radius:5px}
-  </style>
-</head>
-<body>
-  <h1>Slugs</h1>
-  <ul>
-    {sites.map((s) => <li><a href={`/${s.slug}/`}>{s.profile.title}</a> · <code>{s.template}</code> · <a href={`/${s.slug}.json`}>json</a></li>)}
-  </ul>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>bio-link landing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
+  </head>
+  <body>
+    <SiteHub sites={sites} dashboardUrl={dashboardUrl} />
+  </body>
 </html>

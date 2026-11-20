@@ -1,6 +1,6 @@
-import { connection } from "next/server";
 import { Suspense } from "react";
-import DashboardSession from "@/components/DashboardSession";
+import Editor from "@/components/Editor";
+import { getSupabaseEnv, requireUser } from "@/lib/auth";
 
 export default function Page() {
   return (
@@ -11,13 +11,11 @@ export default function Page() {
 }
 
 async function Dashboard() {
-  await connection();
-  const url = process.env.SUPABASE_URL;
-  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !publishableKey) {
+  if (!getSupabaseEnv()) {
     return <main className="p-8 text-sm">Thêm cấu hình Supabase vào apps/dashboard/.env.local.</main>;
   }
 
+  const user = await requireUser();
   const landingUrl = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:4321";
-  return <DashboardSession url={url} publishableKey={publishableKey} landingUrl={landingUrl} />;
+  return <Editor key={user.id} email={user.email ?? ""} landingUrl={landingUrl} />;
 }

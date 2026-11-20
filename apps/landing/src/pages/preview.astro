@@ -46,6 +46,11 @@ if (method === "POST") {
 if (error) Astro.response.status = 422;
 else if (!site) Astro.response.status = 404;
 ---
-{error
-  ? <pre style="font:13px/1.5 ui-monospace,monospace;color:#b00;padding:16px;white-space:pre-wrap">{error}</pre>
-  : site ? <SitePage site={site} products={products} preview /> : <p>Chưa có trang đã publish.</p>}
+
+{error ? (
+  <pre style="font:13px/1.5 ui-monospace,monospace;color:#b00;padding:16px;white-space:pre-wrap">{error}</pre>
+) : site ? (
+  <SitePage site={site} products={products} preview />
+) : (
+  <p>Chưa có trang đã publish.</p>
+)}

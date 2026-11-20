@@ -3,9 +3,17 @@ import { cssUrl } from "../lib/icons";
 import TLink from "./TLink.astro";
 import Round from "./Round.astro";
 import Icon from "./Icon.astro";
-interface Props { href?: string; track: string; pos: string; image?: string; name?: string; price?: string }
+interface Props {
+  href?: string;
+  track: string;
+  pos: string;
+  image?: string;
+  name?: string;
+  price?: string;
+}
 const { href, track, pos, image, name, price } = Astro.props;
 ---
+
 <TLink class="lb-pr" href={href} track={track} pos={pos}>
   <div class="lb-pr-img" style={image ? `background-image:${cssUrl(image)}` : undefined}>
     {!image && <Icon name="bag" class="lb-ph-ic" />}
