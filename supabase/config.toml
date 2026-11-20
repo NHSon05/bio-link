@@ -27,6 +27,10 @@ site_url = "http://localhost:3000"
 enable_signup = false
 minimum_password_length = 8
 
+[auth.email.template.confirmation]
+subject = "Xác nhận email cho bio-link"
+content_path = "./supabase/templates/confirmation.html"
+
 [realtime]
 enabled = false
 

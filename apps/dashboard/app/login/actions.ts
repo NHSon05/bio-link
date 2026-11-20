@@ -10,18 +10,27 @@ import {
   googleLoginError,
   safeNext,
 } from "@/lib/auth";
+import { readAuthCredentials } from "@/lib/authForm";
 
-export type LoginState = { error?: string; email?: string };
+export type LoginState = { error?: string; email?: string; needsEmailConfirmation?: boolean };
 
 export async function signIn(_: LoginState, form: FormData): Promise<LoginState> {
-  const email = String(form.get("email") ?? "").trim();
-  const password = String(form.get("password") ?? "");
+  const { email, password } = readAuthCredentials(form);
   if (!email || !password) return { error: "Nhập email và mật khẩu.", email };
 
   try {
     const supabase = await createSessionClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: "Không đăng nhập được. Kiểm tra email và mật khẩu.", email };
+    if (error) {
+      const needsEmailConfirmation = error.code === "email_not_confirmed";
+      return {
+        error: needsEmailConfirmation
+          ? "Xác nhận email trước khi đăng nhập."
+          : "Không đăng nhập được. Kiểm tra email và mật khẩu.",
+        email,
+        needsEmailConfirmation,
+      };
+    }
   } catch (error) {
     console.error("Sign in failed", error);
     return { error: "Không kết nối được tới Supabase.", email };

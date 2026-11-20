@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 .next/
+apps/dashboard/test-results/
 .astro/
 .vercel/
 next-env.d.ts
