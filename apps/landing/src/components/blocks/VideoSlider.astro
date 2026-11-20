@@ -1,0 +1,28 @@
+---
+/** Video slider: 1 video/khung. Nút ← → do runtime xử lý (data-vid). Không có JS vẫn vuốt được. */
+import type { Block } from "@bio-link/schema";
+import { artStyle } from "../../lib/icons";
+import Section from "../Section.astro";
+import TLink from "../TLink.astro";
+import Round from "../Round.astro";
+import Icon from "../Icon.astro";
+interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+const { b, pos, cls, attrs } = Astro.props;
+const items = b.items ?? [];
+---
+<Section b={b} pos={pos} class={`lb-video ${cls}`} attrs={attrs}>
+  <div class="lb-vid-box">
+    <div class="lb-vid-track">
+      {items.map((it, i) => (
+        <TLink class="lb-vid-item" href={it.url} track={it.id || `${b.id}-${i}`} pos={`${pos}.${i}`}>
+          <div class="lb-vid-art" style={artStyle(it.thumbnail, it.bg as string | undefined, it.id || i)}><Round name="triangle" class="lb-play" /></div>
+          {it.text && <span class="lb-chip lb-vid-cap">{it.text}</span>}
+        </TLink>
+      ))}
+    </div>
+    {items.length > 1 && <>
+      <button class="lb-vid-nav lb-prev" type="button" aria-label="Trước" data-vid="-1"><Icon name="arrow-l" /></button>
+      <button class="lb-vid-nav lb-next" type="button" aria-label="Sau" data-vid="1"><Icon name="arrow-r" /></button>
+    </>}
+  </div>
+</Section>

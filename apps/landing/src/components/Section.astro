@@ -1,0 +1,21 @@
+---
+/** Card section: tiêu đề + "View all ↗" (nếu có). */
+import type { Block } from "@bio-link/schema";
+import TLink from "./TLink.astro";
+import Round from "./Round.astro";
+interface Props { b: Block; pos: number; class?: string; attrs: Record<string, string> }
+const { b, pos, class: cls, attrs } = Astro.props;
+---
+<section class:list={["lb-block lb-section", cls]} {...attrs}>
+  {(b.title || b.viewAll) && (
+    <div class="lb-sec-h">
+      <h2 class="lb-sec-title">{b.title}</h2>
+      {b.viewAll && (
+        <TLink class="lb-viewall" href={b.viewAll} track={`${b.id}-viewall`} pos={pos}>
+          <span class="lb-va-t">View all</span><Round name="arrow-ur" class="lb-round-sm" />
+        </TLink>
+      )}
+    </div>
+  )}
+  <slot />
+</section>

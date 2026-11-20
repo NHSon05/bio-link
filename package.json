@@ -1,0 +1,13 @@
+{
+  "name": "bio-link",
+  "private": true,
+  "packageManager": "pnpm@12.14.0",
+  "scripts": {
+    "dev:dashboard": "pnpm --filter dashboard dev",
+    "dev:landing": "pnpm --filter landing dev",
+    "build:runtime": "pnpm --filter @bio-link/runtime build",
+    "build:landing": "pnpm build:runtime && pnpm --filter landing build",
+    "build:dashboard": "pnpm --filter dashboard build",
+    "build": "pnpm build:landing && pnpm build:dashboard"
+  }
+}

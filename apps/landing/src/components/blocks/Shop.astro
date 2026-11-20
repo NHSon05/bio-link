@@ -1,0 +1,40 @@
+---
+/**
+ * Shop: sản phẩm affiliate theo bộ sưu tập (mỗi bộ sưu tập = 1 tab).
+ * Sản phẩm được ghi sẵn vào HTML lúc build (plan mục 12): trang vẫn static.
+ * Mọi tab đều render sẵn; runtime chỉ ẩn/hiện. Không có JS thì thấy tab đầu.
+ */
+import { formatPrice, type Block, type ProductDb } from "@bio-link/schema";
+import Section from "../Section.astro";
+import ProductTile from "../ProductTile.astro";
+interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string>; products: ProductDb }
+const { b, pos, cls, attrs, products: db } = Astro.props;
+
+const ids = Array.isArray(b.collections) ? (b.collections as string[]) : [];
+let cols = ids.map((id) => db.collections.find((c) => c.id === id)).filter((c) => !!c);
+if (!cols.length && db.collections.length) cols = [db.collections[0]];
+const byId = new Map(db.products.map((p) => [p.id, p]));
+const limit = typeof b.limit === "number" ? b.limit : 6;
+const tabs = cols.map((c) => {
+  const items = c.items.map((id) => byId.get(id)).filter((p) => !!p && p.visible !== false);
+  return { ...c, items };
+});
+---
+<Section b={b} pos={pos} class={`lb-shop ${cls}`} attrs={attrs}>
+  {tabs.length > 1 && (
+    <div class="lb-shop-tabs">
+      {tabs.map((c, i) => <button class:list={["lb-shop-tab", { on: i === 0 }]} type="button" data-tab={i}>{c.name}</button>)}
+    </div>
+  )}
+  {tabs.map((c, i) => (
+    <div class="lb-shop-pane" data-pane={i} hidden={i !== 0}>
+      <div class="lb-shop-count">{c.items.length} sản phẩm</div>
+      <div class="lb-pr-grid">
+        {c.items.slice(0, limit).map((p, k) => (
+          <ProductTile href={p!.affiliateUrl || p!.url} track={p!.id} pos={`${pos}.${k}`} image={p!.image} name={p!.title} price={formatPrice(p!.price, p!.currency)} />
+        ))}
+        {!c.items.length && <div class="lb-shop-empty">Chưa có sản phẩm</div>}
+      </div>
+    </div>
+  ))}
+</Section>

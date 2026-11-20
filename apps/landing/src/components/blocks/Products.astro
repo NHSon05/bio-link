@@ -1,0 +1,15 @@
+---
+/** Sản phẩm nhập tay: ảnh + tên + giá. */
+import type { Block } from "@bio-link/schema";
+import Section from "../Section.astro";
+import ProductTile from "../ProductTile.astro";
+interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+const { b, pos, cls, attrs } = Astro.props;
+---
+<Section b={b} pos={pos} class={`lb-products ${cls}`} attrs={attrs}>
+  <div class="lb-pr-grid">
+    {(b.items ?? []).map((it, i) => (
+      <ProductTile href={it.url} track={it.id || `${b.id}-${i}`} pos={`${pos}.${i}`} image={it.thumbnail} name={it.text} price={it.price ? String(it.price) : undefined} />
+    ))}
+  </div>
+</Section>

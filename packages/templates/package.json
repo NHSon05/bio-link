@@ -1,0 +1,12 @@
+{
+  "name": "@bio-link/templates",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "@bio-link/schema": "workspace:*"
+  }
+}

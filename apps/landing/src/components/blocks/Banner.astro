@@ -1,0 +1,14 @@
+---
+import type { Block } from "@bio-link/schema";
+import TLink from "../TLink.astro";
+import Round from "../Round.astro";
+interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+const { b, pos, cls, attrs } = Astro.props;
+---
+<TLink class={["lb-block lb-banner", cls]} href={b.url} track={b.id} pos={pos} {...attrs}>
+  <div class="lb-banner-body">
+    <div class="lb-banner-title">{b.text}</div>
+    {b.subtext && <div class="lb-banner-sub">{b.subtext}</div>}
+  </div>
+  <Round name="arrow-ur" class="lb-round-white" />
+</TLink>

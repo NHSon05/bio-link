@@ -1,0 +1,6 @@
+---
+import { svg } from "../lib/icons";
+interface Props { name: string; class?: string }
+const { name, class: cls } = Astro.props;
+---
+<span class:list={["lb-ic", cls]} set:html={svg(name)} />

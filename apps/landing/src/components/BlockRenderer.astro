@@ -1,0 +1,27 @@
+---
+/** Chọn component theo type. Type lạ thì bỏ qua, không làm vỡ trang. */
+import { isWide, type Block, type ProductDb } from "@bio-link/schema";
+import HeroVideo from "./blocks/HeroVideo.astro";
+import Carousel from "./blocks/Carousel.astro";
+import Card from "./blocks/Card.astro";
+import LinkButton from "./blocks/LinkButton.astro";
+import Banner from "./blocks/Banner.astro";
+import Release from "./blocks/Release.astro";
+import VideoSlider from "./blocks/VideoSlider.astro";
+import Events from "./blocks/Events.astro";
+import Products from "./blocks/Products.astro";
+import Subscribe from "./blocks/Subscribe.astro";
+import Shop from "./blocks/Shop.astro";
+
+interface Props { b: Block; pos: number; products: ProductDb }
+const { b, pos, products } = Astro.props;
+
+const COMPONENTS: Record<string, any> = {
+  "hero-video": HeroVideo, carousel: Carousel, card: Card, link: LinkButton, banner: Banner,
+  release: Release, video: VideoSlider, events: Events, products: Products, subscribe: Subscribe, shop: Shop,
+};
+const C = b.hidden ? null : COMPONENTS[b.type];
+const cls = isWide(b) ? "lb-wide" : "";
+const attrs = { id: `b-${b.id}`, "data-block-id": b.id };
+---
+{C && <C b={b} pos={pos} cls={cls} attrs={attrs} products={products} />}

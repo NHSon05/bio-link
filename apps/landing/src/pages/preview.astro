@@ -1,0 +1,51 @@
+---
+/**
+ * Route preview cho dashboard (plan mục 7). Chỉ chạy trên server nội bộ, không lên CDN.
+ *  - GET  /preview?slug=x  → render bản đã publish của slug
+ *  - POST /preview (body = JSON bản nháp) → render bản nháp bằng đúng template production
+ * Dashboard gửi JSON từ origin được cấu hình.
+ */
+import { SiteSchema, type Site } from "@bio-link/schema";
+import SitePage from "../layouts/SitePage.astro";
+import { loadPublishedSites, products } from "../lib/data";
+
+export const prerender = false;
+
+const allowOrigin = import.meta.env.DASHBOARD_ORIGIN ?? "http://localhost:3000";
+Astro.response.headers.set("Access-Control-Allow-Origin", allowOrigin);
+Astro.response.headers.set("Cache-Control", "no-store");
+Astro.response.headers.set("Vary", "Origin");
+
+const { method } = Astro.request;
+const origin = Astro.request.headers.get("origin");
+if (method === "OPTIONS") {
+  if (origin !== allowOrigin) return new Response(null, { status: 403 });
+  Astro.response.headers.set("Access-Control-Allow-Methods", "POST");
+  Astro.response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return new Response(null, { status: 204, headers: Astro.response.headers });
+}
+
+let site: Site | undefined;
+let error = "";
+if (method === "POST") {
+  if (origin && origin !== allowOrigin && origin !== Astro.url.origin) {
+    return new Response(null, { status: 403 });
+  }
+  try {
+    const r = SiteSchema.safeParse(await Astro.request.json());
+    if (r.success) site = r.data;
+    else error = r.error.message;
+  } catch (e) {
+    error = "JSON không hợp lệ: " + (e as Error).message;
+  }
+} else {
+  const sites = await loadPublishedSites();
+  const slug = Astro.url.searchParams.get("slug");
+  site = sites.find((entry) => entry.slug === slug) ?? sites[0];
+}
+if (error) Astro.response.status = 422;
+else if (!site) Astro.response.status = 404;
+---
+{error
+  ? <pre style="font:13px/1.5 ui-monospace,monospace;color:#b00;padding:16px;white-space:pre-wrap">{error}</pre>
+  : site ? <SitePage site={site} products={products} preview /> : <p>Chưa có trang đã publish.</p>}

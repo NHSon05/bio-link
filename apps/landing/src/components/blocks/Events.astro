@@ -1,0 +1,30 @@
+---
+/** Lịch sự kiện: ô ngày + địa điểm + pill Tickets. */
+import type { Block } from "@bio-link/schema";
+import Section from "../Section.astro";
+import TLink from "../TLink.astro";
+interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+const { b, pos, cls, attrs } = Astro.props;
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+---
+<Section b={b} pos={pos} class={`lb-events ${cls}`} attrs={attrs}>
+  <div class="lb-ev-list">
+    {(b.items ?? []).map((it, i) => {
+      const d = new Date(String(it.date ?? ""));
+      const ok = !Number.isNaN(d.getTime());
+      return (
+        <TLink class="lb-ev" href={it.url} track={it.id || `${b.id}-${i}`} pos={`${pos}.${i}`}>
+          <div class="lb-ev-date">
+            <span class="lb-ev-d">{ok ? d.getUTCDate() : "--"}</span>
+            <span class="lb-ev-m">{ok ? MONTHS[d.getUTCMonth()] : "---"}</span>
+          </div>
+          <div class="lb-ev-info">
+            <div class="lb-ev-venue">{String(it.venue ?? "")}</div>
+            <div class="lb-ev-city">{String(it.city ?? "")}</div>
+          </div>
+          <span class="lb-ev-btn">{String(it.cta || "Tickets")}</span>
+        </TLink>
+      );
+    })}
+  </div>
+</Section>

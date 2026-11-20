@@ -1,0 +1,12 @@
+---
+/** 1 trang static cho mỗi slug → /{slug}/index.html trên S3 + CloudFront. */
+import SitePage from "../layouts/SitePage.astro";
+import { loadBuildSites, products } from "../lib/data";
+
+export async function getStaticPaths() {
+  const sites = await loadBuildSites();
+  return sites.map((site) => ({ params: { slug: site.slug }, props: { site } }));
+}
+const { site } = Astro.props;
+---
+<SitePage site={site} products={products} />

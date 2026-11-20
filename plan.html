@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Link-in-Bio Plan</title>
+<style>
+:root{
+  --bg:#f7f7f5; --surface:#ffffff; --surface-2:#f0f0ec; --text:#1c1c1a; --muted:#6b6b66;
+  --border:#e2e2dc; --accent:#e0245e; --accent-soft:#fde8ef; --ok:#1f8a5b; --ok-soft:#e3f4ec;
+  --warn:#b26b00; --warn-soft:#fdf1dc; --info:#2563eb; --info-soft:#e6eefc;
+  --code-bg:#1e1e1c; --code-text:#e8e8e3;
+  --radius:12px; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121211; --surface:#1b1b19; --surface-2:#242421; --text:#ececE8; --muted:#9a9a93;
+    --border:#2f2f2b; --accent:#ff5c8a; --accent-soft:#3a1824; --ok:#4cc38a; --ok-soft:#16301f;
+    --warn:#f0a840; --warn-soft:#3a2a10; --info:#6c9bff; --info-soft:#18233d;
+    --code-bg:#0c0c0b; --code-text:#e8e8e3; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121211; --surface:#1b1b19; --surface-2:#242421; --text:#ececE8; --muted:#9a9a93;
+  --border:#2f2f2b; --accent:#ff5c8a; --accent-soft:#3a1824; --ok:#4cc38a; --ok-soft:#16301f;
+  --warn:#f0a840; --warn-soft:#3a2a10; --info:#6c9bff; --info-soft:#18233d;
+  --code-bg:#0c0c0b; --code-text:#e8e8e3; --shadow:none;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:15.5px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:var(--surface-2);padding:.1em .4em;border-radius:5px}
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+nav.toc{position:sticky;top:24px;align-self:start;font-size:14px}
+nav.toc .brand{font-weight:700;font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+nav.toc .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-left:2px solid var(--border)}
+nav.toc a:hover{color:var(--text);border-color:var(--accent)}
+.theme-btn{margin-top:18px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}
+header.hero{background:linear-gradient(135deg,var(--accent-soft),var(--surface));border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:28px}
+header.hero h1{margin:0 0 8px;font-size:30px;line-height:1.2;letter-spacing:-.02em}
+header.hero p{margin:0;color:var(--muted);max-width:680px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tag{font-size:12.5px;padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px 28px;margin-bottom:20px;box-shadow:var(--shadow);scroll-margin-top:20px}
+section h2{margin:0 0 4px;font-size:21px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+section h2 .num{font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 8px}
+section .lead{color:var(--muted);margin:0 0 18px}
+h3{font-size:16px;margin:22px 0 10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.box{border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--bg)}
+.box h4{margin:0 0 8px;font-size:14.5px}
+.box ul{margin:0;padding-left:18px}
+.box li{margin:3px 0}
+.box.good{background:var(--ok-soft);border-color:transparent}
+.box.good h4{color:var(--ok)}
+.box.bad{background:var(--accent-soft);border-color:transparent}
+.box.bad h4{color:var(--accent)}
+.callout{border-left:3px solid var(--warn);background:var(--warn-soft);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:16px;font-size:14.5px}
+.callout.info{border-color:var(--info);background:var(--info-soft)}
+.goal{display:flex;gap:12px;align-items:flex-start}
+.goal .ic{flex:none;width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:14px}
+.goal b{display:block;font-size:14.5px}
+.goal span{color:var(--muted);font-size:14px}
+/* flow */
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:8px 0 6px}
+.node{flex:1 1 140px;min-width:130px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.node b{display:block;font-size:14px}
+.node small{color:var(--muted);font-size:12.5px;line-height:1.4;display:block;margin-top:3px}
+.node.hl{border-color:var(--accent);background:var(--accent-soft)}
+.arrow{flex:none;display:grid;place-items:center;width:28px;color:var(--muted);font-size:18px}
+.row-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 6px}
+/* table */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:520px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:13.5px}
+tr:last-child td{border-bottom:0}
+td.y{color:var(--ok);font-weight:600}
+td.n{color:var(--accent);font-weight:600}
+th.rec{background:var(--ok-soft);color:var(--ok)}
+pre{background:var(--code-bg);color:var(--code-text);padding:18px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.55;margin:0}
+pre .k{color:#7cc4ff}.k2{color:#f5a97f}.s{color:#a6e3a1}.c{color:#7f7f78}
+/* components preview */
+.phone{width:100%;max-width:300px;margin:0 auto;border:1px solid var(--border);border-radius:26px;padding:20px 14px;background:linear-gradient(180deg,#191919,#0b0b0b);color:#fff}
+.phone .av{width:64px;height:64px;border-radius:50%;margin:0 auto 8px;background:linear-gradient(135deg,#ff5c8a,#ffb86b)}
+.phone .t{text-align:center;font-weight:700}
+.phone .st{text-align:center;font-size:12px;opacity:.65;margin-bottom:8px}
+.phone .soc{display:flex;justify-content:center;gap:8px;margin-bottom:14px}
+.phone .soc i{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.18);display:block}
+.phone .hero-v{height:120px;border-radius:12px;background:linear-gradient(135deg,#3b1c6b,#e0245e);display:grid;place-items:center;font-size:12px;margin-bottom:10px;position:relative}
+.phone .hero-v::before{content:"▶";font-size:26px;opacity:.9}
+.phone .hero-v span{position:absolute;left:10px;bottom:8px;font-size:11.5px;background:rgba(0,0,0,.4);padding:2px 8px;border-radius:99px}
+.phone .car{display:flex;gap:8px;overflow:hidden;margin-bottom:10px}
+.phone .car div{flex:none;width:90px;height:70px;border-radius:10px;background:rgba(255,255,255,.12)}
+.phone .card{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.08);border-radius:12px;padding:8px;margin-bottom:8px;font-size:12.5px}
+.phone .card div{width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.18);flex:none}
+.phone .lnk{text-align:center;border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:8px;font-size:12.5px}
+.comp-list{display:grid;gap:8px}
+.comp{display:flex;gap:10px;align-items:baseline;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:14px}
+.comp code{flex:none}
+.comp span{color:var(--muted)}
+/* checklist */
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;position:relative;padding:12px 14px 12px 52px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg)}
+.steps li::before{content:counter(s);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700}
+.steps li b{display:block}
+.steps li span{color:var(--muted);font-size:14px}
+.q{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--border);font-size:14.5px}
+.q:last-child{border:0}
+.q::before{content:"?";flex:none;width:22px;height:22px;border-radius:50%;background:var(--info-soft);color:var(--info);display:grid;place-items:center;font-weight:700;font-size:13px}
+footer{color:var(--muted);font-size:13px;text-align:center;margin-top:30px}
+/* template previews */
+.tpl{border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--bg)}
+.tpl h4{margin:10px 0 4px;font-size:14.5px}
+.tpl p{margin:0;color:var(--muted);font-size:13.5px}
+.mini{height:170px;border-radius:12px;background:#111;padding:10px;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+.mini i{display:block;border-radius:5px;background:rgba(255,255,255,.16);flex:none}
+.mini .av{width:26px;height:26px;border-radius:50%;margin:0 auto;background:linear-gradient(135deg,#ff5c8a,#ffb86b)}
+.mini .ln{height:16px}
+.mini .hv{height:62px;background:linear-gradient(135deg,#3b1c6b,#e0245e)}
+.mini .row{display:flex;gap:5px;flex:none}
+.mini .row i{flex:1;height:38px}
+.mini .tag-r{font-size:9px;color:#ff8fb0;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;gap:16px;padding:16px 16px 60px}
+  nav.toc{position:static;display:flex;flex-wrap:wrap;gap:6px}
+  nav.toc .brand{width:100%;margin-bottom:4px}
+  nav.toc a{border:1px solid var(--border);border-radius:99px;padding:3px 10px;font-size:13px}
+  nav.toc .theme-btn{margin-top:0}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  section{padding:20px 18px}
+  header.hero{padding:22px}
+  header.hero h1{font-size:24px}
+  .flow{flex-direction:column}
+  .arrow{width:auto;height:24px;transform:rotate(90deg)}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc">
+    <div class="brand"><span class="dot"></span>Link-in-Bio Plan</div>
+    <a href="#problem">1. Bài toán</a>
+    <a href="#goals">2. Mục tiêu</a>
+    <a href="#arch">3. Kiến trúc</a>
+    <a href="#data">4. Data model</a>
+    <a href="#templates">5. Template &amp; layout</a>
+    <a href="#fe">6. Frontend (Astro)</a>
+    <a href="#apps">7. Dashboard &amp; 2 app</a>
+    <a href="#tracking">8. Tracking</a>
+    <a href="#ops">9. Vận hành &amp; phân quyền</a>
+    <a href="#risks">10. Rủi ro &amp; câu hỏi</a>
+    <a href="#mvp">11. Task Mock UI</a>
+    <button class="theme-btn" id="themeBtn" type="button">◐ Đổi giao diện</button>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <h1>Smart Link-in-Bio: kế hoạch hệ thống</h1>
+      <p>Giữ Linktree làm cầu nối có domain uy tín, còn landing page do mình code: static, cache trên CDN, chọn template chung và tùy biến khung layout theo từng social page, tự đẩy content viral lên đầu.</p>
+      <div class="tags">
+        <span class="tag">Astro landing</span><span class="tag">Next.js dashboard</span><span class="tag">Template + layout tùy biến</span><span class="tag">CDN cache</span><span class="tag">Dashboard → JSON</span><span class="tag">n8n automation</span><span class="tag">GA4 tracking</span>
+      </div>
+    </header>
+
+    <section id="problem">
+      <h2><span class="num">01</span>Bài toán</h2>
+      <p class="lead">Hiện đang dùng Linktree free cho link trong bio của nhiều page FB/TikTok/IG.</p>
+      <div class="grid-2">
+        <div class="box good">
+          <h4>Linktree làm tốt</h4>
+          <ul>
+            <li>Domain được các nền tảng tin cậy, link ít bị chặn</li>
+            <li>Có sẵn landing page, nhiều người dùng chung được</li>
+            <li>Nối được nhiều page</li>
+            <li>Có MCP để setup nhanh</li>
+          </ul>
+        </div>
+        <div class="box bad">
+          <h4>Linktree không làm được</h4>
+          <ul>
+            <li>Không có API, không tự động hóa được</li>
+            <li>Không scale: quản lý nhiều account rất phiền</li>
+            <li>Không track được traffic theo từng page</li>
+            <li>Không đổi được UI hay thứ tự theo từng page</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Hướng giải</h3>
+      <div class="flow">
+        <div class="node"><b>Social page</b><small>FB / TikTok / IG bio</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Linktree</b><small>chỉ nhúng 1 banner</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Landing page của mình</b><small>tùy biến theo slug, viral lên đầu</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Sản phẩm / video</b><small>link đích</small></div>
+      </div>
+      <div class="callout"><b>Đánh đổi:</b> người dùng phải bấm thêm 1 lần. Banner phải đủ hấp dẫn và landing page phải load gần như tức thì.</div>
+    </section>
+
+    <section id="goals">
+      <h2><span class="num">02</span>Mục tiêu</h2>
+      <p class="lead">Năm điều hệ thống phải đạt được.</p>
+      <div class="grid-2">
+        <div class="goal"><div class="ic">1</div><div><b>Phân phối traffic thông minh</b><span>Mỗi social page có slug riêng, nội dung và thứ tự riêng.</span></div></div>
+        <div class="goal"><div class="ic">2</div><div><b>Gần như không đụng backend</b><span>Static, cache trên CDN. 100 page × 100 người vào cùng lúc vẫn không delay.</span></div></div>
+        <div class="goal"><div class="ic">3</div><div><b>Marketing tự cấu hình</b><span>Thumbnail, text, URL, layout chỉnh trên dashboard, không cần dev.</span></div></div>
+        <div class="goal"><div class="ic">4</div><div><b>Track theo page và card</b><span>Biết traffic đến từ page nào, card nào được bấm.</span></div></div>
+        <div class="goal"><div class="ic">5</div><div><b>Tự động</b><span>Content cũ bắt đầu viral thì tự được đẩy lên, không chỉnh tay.</span></div></div>
+      </div>
+    </section>
+
+    <section id="arch">
+      <h2><span class="num">03</span>Kiến trúc đề xuất</h2>
+      <p class="lead">Có hai luồng ghi dữ liệu vào DB và một luồng phục vụ người dùng hoàn toàn qua CDN.</p>
+
+      <div class="row-label">Luồng config (marketing)</div>
+      <div class="flow">
+        <div class="node"><b>Dashboard (Next.js)</b><small>cấu hình template, layout, thumbnail, text, url</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>DB</b><small>config từng slug</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Build job</b><small>đọc sitemap.xml, build từng slug</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>CDN static</b><small>Amazon S3 + CloudFront</small></div>
+      </div>
+
+      <div class="row-label">Luồng tự động (viral)</div>
+      <div class="flow">
+        <div class="node"><b>n8n workflow</b><small>lấy stats post định kỳ</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Tính viral score</b><small>tốc độ tăng view</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Ghi DB</b><small>cập nhật score</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Trigger rebuild</b><small>webhook / cron</small></div>
+      </div>
+
+      <div class="row-label">Luồng người dùng</div>
+      <div class="flow">
+        <div class="node"><b>Banner Linktree</b><small>kèm UTM</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>/{slug} trên CDN</b><small>HTML build sẵn</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Fetch /{slug}.json</b><small>thứ tự "hot", TTL ~5 phút</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>GA4 / GTM</b><small>pageview + click</small></div>
+      </div>
+
+      <h3>Build static thuần hay tải JSON trên trình duyệt?</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>A. Build static từng slug</th><th>B. Shell + fetch JSON</th><th class="rec">C. Kết hợp (khuyên dùng)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Tốc độ</b></td><td class="y">Nhanh nhất</td><td>Thêm 1 request</td><td class="y">Nhanh</td></tr>
+            <tr><td><b>Độ mới nội dung</b></td><td class="n">Chờ rebuild</td><td class="y">Gần realtime</td><td class="y">Gần realtime</td></tr>
+            <tr><td><b>OG preview khi share</b></td><td class="y">Có</td><td class="n">Không (crawler không chạy JS)</td><td class="y">Có</td></tr>
+            <tr><td><b>Tải backend</b></td><td class="y">0</td><td class="y">0 (JSON nằm trên CDN)</td><td class="y">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout info"><b>Phương án C:</b> HTML build sẵn cho từng slug (OG tags, avatar, danh sách card mặc định), sau đó trình duyệt fetch thêm <code>/{slug}.json</code> từ CDN để cập nhật thứ tự "hot" mà không phải build lại.</div>
+    </section>
+
+    <section id="data">
+      <h2><span class="num">04</span>Data model (JSON cho từng slug)</h2>
+      <p class="lead">Dashboard ghi vào DB, DB xuất ra file này, build job đọc file này để sinh page.</p>
+<pre><span class="c">// fanpage-abc.json</span>
+{
+  <span class="k">"slug"</span>: <span class="s">"fanpage-abc"</span>,
+  <span class="k">"source"</span>: { <span class="k">"platform"</span>: <span class="s">"facebook"</span>, <span class="k">"pageId"</span>: <span class="s">"123"</span> },
+  <span class="k">"template"</span>: <span class="s">"video-first"</span>,                  <span class="c">// chọn template chung (mục 5)</span>
+  <span class="k">"theme"</span>: { <span class="k">"accent"</span>: <span class="s">"#ff3d6e"</span> },              <span class="c">// chỉ ghi phần override, còn lại lấy từ template</span>
+  <span class="k">"layout"</span>: {                                   <span class="c">// block nào nằm ở vùng nào</span>
+    <span class="k">"hero"</span>:   { <span class="k">"blocks"</span>: [<span class="s">"v1"</span>] },
+    <span class="k">"main"</span>:   { <span class="k">"variant"</span>: <span class="s">"grid-2"</span>, <span class="k">"blocks"</span>: [<span class="s">"p1"</span>, <span class="s">"c1"</span>] },
+    <span class="k">"footer"</span>: { <span class="k">"blocks"</span>: [<span class="s">"l1"</span>] }
+  },
+  <span class="k">"profile"</span>: {
+    <span class="k">"avatar"</span>: <span class="s">"https://cdn/.../avatar.webp"</span>,
+    <span class="k">"title"</span>: <span class="s">"ABC Shop"</span>,
+    <span class="k">"subtitle"</span>: <span class="s">"Deal hot mỗi ngày"</span>,
+    <span class="k">"socials"</span>: [{ <span class="k">"type"</span>: <span class="s">"tiktok"</span>, <span class="k">"url"</span>: <span class="s">"..."</span> }]
+  },
+  <span class="k">"blocks"</span>: [
+    { <span class="k">"type"</span>: <span class="s">"hero-video"</span>, <span class="k">"id"</span>: <span class="s">"v1"</span>, <span class="k">"thumbnail"</span>: <span class="s">"..."</span>, <span class="k">"text"</span>: <span class="s">"Video đang viral"</span>, <span class="k">"url"</span>: <span class="s">"..."</span>, <span class="k">"pinned"</span>: <span class="k2">true</span> },
+    { <span class="k">"type"</span>: <span class="s">"carousel"</span>, <span class="k">"id"</span>: <span class="s">"c1"</span>, <span class="k">"items"</span>: [ ... ] },
+    { <span class="k">"type"</span>: <span class="s">"card"</span>, <span class="k">"id"</span>: <span class="s">"p1"</span>, <span class="k">"thumbnail"</span>: <span class="s">"..."</span>, <span class="k">"text"</span>: <span class="s">"Sản phẩm A"</span>, <span class="k">"url"</span>: <span class="s">"..."</span>, <span class="k">"score"</span>: <span class="k2">87</span> },
+    { <span class="k">"type"</span>: <span class="s">"link"</span>, <span class="k">"id"</span>: <span class="s">"l1"</span>, <span class="k">"text"</span>: <span class="s">"Website"</span>, <span class="k">"url"</span>: <span class="s">"..."</span> }
+  ],
+  <span class="k">"updatedAt"</span>: <span class="s">"2026-11-19T09:00:00Z"</span>
+}</pre>
+      <h3>Quy tắc xếp thứ tự</h3>
+      <div class="flow">
+        <div class="node hl"><b>1. pinned</b><small>marketing ghim cứng</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>2. viral score</b><small>tốc độ tăng view, không phải tổng view</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>3. mới nhất</b><small>ngày đăng</small></div>
+      </div>
+      <div class="callout info">Tính theo <b>tốc độ tăng</b> thì bắt được cả trường hợp "content cũ bắt đầu viral". Việc xếp hạng diễn ra <b>bên trong từng vùng</b> của layout: card trong vùng <code>main</code> đổi chỗ cho nhau, nhưng không nhảy sang vùng <code>hero</code>.</div>
+    </section>
+
+    <section id="templates">
+      <h2><span class="num">05</span>Template &amp; layout tùy biến</h2>
+      <p class="lead">Marketing chọn 1 template chung, rồi tùy biến khung layout cho từng slug mà không cần dev. Dev chỉ viết template một lần, mọi slug dùng lại.</p>
+
+      <h3>Ba lớp tùy biến</h3>
+      <div class="grid-3">
+        <div class="box"><h4>1. Template (dùng chung)</h4>Dev tạo. Là khung layout gồm các <b>vùng</b> có tên cố định: <code>header</code>, <code>hero</code>, <code>main</code>, <code>footer</code>. Quy định vùng nào được chứa loại block nào.</div>
+        <div class="box"><h4>2. Theme (theo slug)</h4>Màu, font, bo góc, kiểu nút. Mặc định lấy từ template, slug chỉ ghi phần muốn đổi. Render thành CSS variables nên không cần code thêm.</div>
+        <div class="box"><h4>3. Layout (theo slug)</h4>Block nào nằm ở vùng nào, thứ tự ra sao, và kiểu hiển thị của vùng: <code>list</code>, <code>grid-2</code> hoặc <code>carousel</code>.</div>
+      </div>
+
+      <h3>Ví dụ bộ template khởi đầu</h3>
+      <div class="grid-3">
+        <div class="tpl">
+          <div class="mini"><span class="av"></span><i class="ln" style="width:60%;margin:0 auto;height:8px"></i><i class="ln"></i><i class="ln"></i><i class="ln"></i><i class="ln"></i></div>
+          <h4>classic</h4><p>Profile trên cùng, danh sách link. Giống Linktree, hợp page ít nội dung.</p>
+        </div>
+        <div class="tpl">
+          <div class="mini"><span class="tag-r">hero</span><i class="hv"></i><span class="tag-r">main · carousel</span><div class="row"><i></i><i></i><i></i></div><i class="ln"></i></div>
+          <h4>video-first</h4><p>Video viral to nhất ở trên, sản phẩm vuốt ngang bên dưới. Hợp page TikTok.</p>
+        </div>
+        <div class="tpl">
+          <div class="mini"><span class="av"></span><span class="tag-r">main · grid-2</span><div class="row"><i></i><i></i></div><div class="row"><i></i><i></i></div><div class="row"><i></i><i></i></div></div>
+          <h4>shop-grid</h4><p>Lưới sản phẩm 2 cột có thumbnail. Hợp page bán hàng nhiều sản phẩm.</p>
+        </div>
+      </div>
+
+      <h3>Template manifest: một file, hai nơi dùng</h3>
+<pre><span class="c">// templates/video-first/template.json</span>
+{
+  <span class="k">"id"</span>: <span class="s">"video-first"</span>,
+  <span class="k">"name"</span>: <span class="s">"Video lên đầu"</span>,
+  <span class="k">"desktop"</span>: <span class="s">"split"</span>,          <span class="c">// bố cục màn rộng ≥760px: center | split | grid</span>
+  <span class="k">"desktopColumns"</span>: <span class="k2">2</span>,
+  <span class="k">"regions"</span>: {
+    <span class="k">"header"</span>: { <span class="k">"allow"</span>: [<span class="s">"profile"</span>] },
+    <span class="k">"hero"</span>:   { <span class="k">"allow"</span>: [<span class="s">"hero-video"</span>, <span class="s">"video"</span>, <span class="s">"release"</span>], <span class="k">"max"</span>: <span class="k2">1</span>, <span class="k">"rank"</span>: <span class="k2">false</span> },
+    <span class="k">"main"</span>:   { <span class="k">"allow"</span>: [<span class="s">"card"</span>, <span class="s">"carousel"</span>, <span class="s">"link"</span>, <span class="s">"shop"</span>, <span class="s">"products"</span>, <span class="s">"events"</span>, <span class="s">"video"</span>, <span class="s">"banner"</span>],
+              <span class="k">"variants"</span>: [<span class="s">"carousel"</span>, <span class="s">"list"</span>, <span class="s">"grid-2"</span>], <span class="k">"defaultVariant"</span>: <span class="s">"carousel"</span>, <span class="k">"rank"</span>: <span class="k2">true</span> },
+    <span class="k">"footer"</span>: { <span class="k">"allow"</span>: [<span class="s">"link"</span>, <span class="s">"subscribe"</span>], <span class="k">"rank"</span>: <span class="k2">false</span> }
+  },
+  <span class="k">"themeDefaults"</span>: { <span class="k">"bg"</span>: <span class="s">"#282828"</span>, <span class="k">"accent"</span>: <span class="s">"#CBD77E"</span>, <span class="k">"font"</span>: <span class="s">"Sora"</span>, <span class="k">"radius"</span>: <span class="k2">24</span>, <span class="k">"button"</span>: <span class="s">"pill"</span> }
+}</pre>
+      <div class="callout info"><b>Astro</b> đọc manifest để render đúng vùng. <b>Dashboard</b> đọc cùng manifest để biết vùng nào kéo thả được block gì, có bao nhiêu chỗ, có những variant nào. Thêm template mới chỉ cần thêm 1 thư mục, không phải sửa dashboard. Bố cục desktop (<code>desktop</code>, <code>desktopColumns</code>) là thuộc tính của template, slug không tự chọn riêng. Bản mẫu chạy được: <code>demo/templates/*/template.json</code>.</div>
+
+      <h3>Quyết định: có giữ chế độ "thứ tự thủ công" không?</h3>
+      <div class="grid-2">
+        <div class="box bad"><h4>Không giữ ở mức toàn trang</h4>Chế độ "thủ công cả trang" tắt luôn việc tự đẩy content viral, đi ngược mục tiêu 5. Nó cũng không biết block nào thuộc vùng nào, dễ kéo card lên trên hero.</div>
+        <div class="box good"><h4>Giữ ở mức từng vùng, bằng cờ <code>rank</code></h4>
+          <ul>
+            <li>Mặc định theo manifest: <code>hero</code> và <code>footer</code> giữ đúng thứ tự kéo thả, <code>main</code> tự xếp theo ghim → viral score → mới nhất.</li>
+            <li>Slug được ghi đè: <code>"layout": { "main": { "rank": false } }</code> khi muốn cố định cả vùng (vd. trang sự kiện).</li>
+            <li>Muốn cố định 1 card trong vùng đang tự xếp: dùng <b>Ghim</b>. Thứ tự kéo thả là thứ tự gốc, dùng để phân định khi score bằng nhau.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Cách render: template chỉ viết một lần</h3>
+      <div class="flow">
+        <div class="node"><b>JSON slug</b><small>template + theme + layout</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Astro build</b><small>chọn layout theo template, render HTML đầy đủ từng vùng</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Trình duyệt</b><small>JS nhỏ (Closure) chỉ sắp xếp lại block có sẵn theo <code>/{slug}.json</code></small></div>
+      </div>
+      <div class="callout"><b>Đánh đổi:</b> phía client chỉ đổi thứ tự và ẩn/hiện block đã có trong HTML. Đổi template, đổi theme hay thêm block mới thì cần rebuild slug đó (qua webhook khi bấm Publish). Nhờ vậy JS client rất nhỏ và không phải viết template lần thứ hai bằng JS.</div>
+    </section>
+
+    <section id="fe">
+      <h2><span class="num">06</span>Frontend (Astro)</h2>
+      <p class="lead">Bộ component render theo <code>type</code> trong JSON. Muốn thêm block mới thì viết 1 component và khai báo 1 type.</p>
+      <div class="grid-2">
+        <div class="phone" aria-label="Mock layout">
+          <div class="av"></div>
+          <div class="t">ABC Shop</div>
+          <div class="st">Deal hot mỗi ngày</div>
+          <div class="soc"><i></i><i></i><i></i></div>
+          <div class="hero-v"><span>🔥 Đang viral</span></div>
+          <div class="car"><div></div><div></div><div></div></div>
+          <div class="card"><div></div>Sản phẩm A: giảm 30%</div>
+          <div class="card"><div></div>Sản phẩm B: mới về</div>
+          <div class="lnk">Website</div>
+        </div>
+        <div>
+          <div class="comp-list">
+            <div class="comp"><code>ProfileHeader</code><span>avatar, tiêu đề, subtitle, icon social</span></div>
+            <div class="comp"><code>HeroVideo</code><span>video hoặc thumbnail lớn, luôn trên cùng</span></div>
+            <div class="comp"><code>Carousel</code><span>vuốt ngang</span></div>
+            <div class="comp"><code>Card</code><span>thumbnail + text</span></div>
+            <div class="comp"><code>LinkButton</code><span>nút link đơn giản</span></div>
+            <div class="comp"><code>Banner</code><span>khối quảng cáo / khuyến mãi</span></div>
+            <div class="comp"><code>TemplateLayout</code><span>layout .astro theo template, chứa các vùng</span></div>
+            <div class="comp"><code>BlockRenderer</code><span>chọn component theo type, đặt vào vùng</span></div>
+          </div>
+        </div>
+      </div>
+      <h3>Yêu cầu riêng cho link-in-bio</h3>
+      <div class="grid-3">
+        <div class="box"><h4>Siêu nhẹ</h4>Phần lớn người dùng mở trong in-app browser FB/TikTok. JS dưới ~50KB, ảnh WebP/AVIF, lazy load.</div>
+        <div class="box"><h4>Mobile-first</h4>Responsive cả desktop. Test trên webview thật: autoplay video, mở link ngoài.</div>
+        <div class="box"><h4>Stack chốt</h4><b>Astro</b> (SSG) render HTML lúc build. JS phía trình duyệt viết bằng <b>vanilla JS</b>, compile bằng <b>Google Closure Compiler</b>. Host trên Amazon S3 + CloudFront.</div>
+      </div>
+
+      <h3>Astro có còn phù hợp không? Có, và hợp hơn khi có template</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Nhu cầu</th><th>Astro đáp ứng thế nào</th></tr></thead>
+          <tbody>
+            <tr><td><b>Nhiều template, chọn theo slug</b></td><td>Mỗi template là 1 layout <code>.astro</code>. Trang <code>[slug].astro</code> đọc field <code>template</code> rồi chọn layout tương ứng.</td></tr>
+            <tr><td><b>Build từng slug từ JSON</b></td><td><code>getStaticPaths()</code> sinh 1 trang cho mỗi slug. Content collections đọc JSON và kiểm tra schema (zod), nên config sai bị chặn ngay lúc build thay vì ra trang lỗi.</td></tr>
+            <tr><td><b>Gần như 0 JS</b></td><td>Mặc định Astro không gửi JS xuống trình duyệt.</td></tr>
+            <tr><td><b>Theme theo slug</b></td><td>Ghi theme thành CSS variables trên <code>:root</code>. Template chỉ dùng biến, không hard-code màu.</td></tr>
+            <tr><td><b>Google Closure Compiler</b></td><td>Astro tự bundle script bằng Vite, không qua Closure. Vì vậy compile runtime riêng bằng Closure ra <code>runtime.js</code>, nhúng bằng <code>&lt;script is:inline src="..."&gt;</code> để Astro không đụng vào. Không dùng island React/Vue.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><b>Cần lưu ý:</b> Astro mặc định build cả site mỗi lần. Với khoảng 100 slug static thì vẫn ổn, nhưng cần đo thực tế. Nếu chậm: chỉ upload lên S3 các file thực sự thay đổi, hoặc build theo danh sách slug đã đổi.</div>
+      <div class="grid-3" style="margin-top:14px">
+        <div class="box"><h4>Next.js</h4>Gửi kèm React runtime xuống client, không hợp Closure ADVANCED. Loại cho landing, nhưng dùng cho dashboard (mục 7).</div>
+        <div class="box"><h4>11ty</h4>Nhẹ, cũng làm được, nhưng không có sẵn schema và type cho config. Phương án dự phòng.</div>
+        <div class="box"><h4>Script Node tự viết</h4>Kiểm soát tối đa nhưng phải tự làm routing, template, dev server. Không đáng.</div>
+      </div>
+      <h3>Yêu cầu bắt buộc: chạy tốt qua Google Closure Compiler</h3>
+      <p class="lead">JS phía client phải chạy đúng sau khi compile ở chế độ <code>ADVANCED_OPTIMIZATIONS</code>. Chế độ này đổi tên biến và thuộc tính để file nhỏ nhất, nên rất dễ làm hỏng code nếu không viết theo quy tắc.</p>
+      <div class="grid-2">
+        <div class="box"><h4>Dữ liệu JSON: truy cập bằng chuỗi</h4>Dùng <code>block["thumbnail"]</code> thay cho <code>block.thumbnail</code>. Nếu không, Closure đổi tên thuộc tính và đọc sai dữ liệu từ <code>/{slug}.json</code>.</div>
+        <div class="box"><h4>Thư viện ngoài: khai báo externs</h4>GA4 <code>gtag</code>, <code>dataLayer</code> và mọi API bên ngoài phải có file externs để Closure giữ nguyên tên.</div>
+        <div class="box"><h4>Hàm gọi từ HTML: export rõ ràng</h4>Hàm cần gọi từ bên ngoài thì gán bằng <code>window["renderBlocks"] = renderBlocks</code>, không để Closure đổi tên.</div>
+        <div class="box"><h4>Tránh code "động"</h4>Không dùng <code>eval</code>, không ghép tên thuộc tính lúc chạy. Hạn chế thư viện npm: phần lớn không tương thích ADVANCED mode.</div>
+      </div>
+      <div class="callout"><b>Hệ quả cho stack:</b> React/Next.js gần như không compile được ở ADVANCED mode, nên phần chạy trên trình duyệt nên là vanilla JS (có JSDoc type để Closure kiểm tra kiểu). Trong CI, chạy test headless trên <b>bản đã compile</b>, không chỉ trên source, vì lỗi đổi tên chỉ xuất hiện sau khi compile.</div>
+    </section>
+
+    <section id="apps">
+      <h2><span class="num">07</span>Dashboard &amp; kiến trúc 2 app</h2>
+      <p class="lead">Không chọn một trong hai. Tách thành 2 app, mỗi phần dùng công cụ hợp với nó.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>Dashboard quản trị</th><th>Landing page</th></tr></thead>
+          <tbody>
+            <tr><td><b>Ai dùng</b></td><td>Marketing, nội bộ, vài chục người</td><td>Khách từ social, rất đông</td></tr>
+            <tr><td><b>Tính chất</b></td><td>Đăng nhập, form, kéo thả, upload ảnh, gọi API</td><td>Static, càng nhẹ càng tốt</td></tr>
+            <tr><td><b>Ràng buộc Closure</b></td><td>Không áp dụng</td><td>Bắt buộc</td></tr>
+            <tr><td><b>Chạy ở đâu</b></td><td>Server nội bộ</td><td>S3 + CloudFront</td></tr>
+            <tr><td><b>Chọn</b></td><td class="y">Next.js</td><td class="y">Astro</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid-2" style="margin-top:14px">
+        <div class="box"><h4>Vì sao dashboard dùng Next.js</h4><ul><li>Ứng dụng tương tác nặng: auth, phân quyền, kéo thả block (dnd-kit), form (react-hook-form)</li><li>API routes làm luôn backend: lưu config, đọc OG lấy ảnh sản phẩm, upload S3, gọi webhook build lại Astro</li><li>Nặng cũng không sao vì không chạy trong in-app browser của khách</li></ul></div>
+        <div class="box"><h4>Vì sao landing vẫn là Astro</h4><ul><li>Next.js luôn gửi kèm React runtime, kể cả khi xuất static</li><li>Nặng hơn trong in-app browser và không compile được bằng Closure ADVANCED</li><li>Lý do ở mục 6 vẫn giữ nguyên</li></ul></div>
+      </div>
+
+      <h3>Live preview: template chỉ viết một lần</h3>
+      <p class="lead" style="margin-bottom:12px">Không viết template hai lần (React cho dashboard, Astro cho landing), vì hai bản sẽ lệch nhau rất nhanh. Preview dùng chính template production.</p>
+      <div class="flow">
+        <div class="node"><b>Dashboard</b><small>marketing sửa form, kéo thả</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Draft JSON</b><small>gửi vào iframe</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Astro /preview</b><small>SSR, chỉ nội bộ, render bằng đúng template production</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>&lt;iframe&gt; trong dashboard</b><small>preview giống hệt trang thật</small></div>
+      </div>
+      <div class="grid-3" style="margin-top:14px">
+        <div class="box"><h4>Production vẫn 100% static</h4>Chỉ route <code>/preview</code> bật SSR (adapter Node, <code>prerender = false</code>), chạy trên server nội bộ. Các trang <code>/{slug}</code> vẫn build static lên CDN.</div>
+        <div class="box"><h4>Sửa nhỏ: postMessage</h4>Đổi màu, đổi thứ tự, đổi text: dashboard gửi JSON mới qua <code>postMessage</code>, iframe cập nhật ngay, không tải lại.</div>
+        <div class="box"><h4>Sửa lớn: tải lại iframe</h4>Đổi template hoặc thêm vùng mới: tải lại iframe để Astro render lại toàn bộ.</div>
+      </div>
+
+      <h3>Cấu trúc repo (monorepo)</h3>
+<pre>apps/
+  dashboard/        <span class="c"># Next.js: quản trị, API, auth</span>
+  landing/          <span class="c"># Astro: static production + route /preview</span>
+packages/
+  schema/           <span class="c"># zod schema cho JSON slug + kiểu block (dùng chung 2 app)</span>
+  templates/        <span class="c"># template.json manifest (dashboard đọc để biết vùng nào nhận block gì)</span>
+  runtime/          <span class="c"># vanilla JS, compile bằng Closure → runtime.js cho landing</span></pre>
+      <div class="callout info"><b>packages/schema</b> giúp hai app hiểu dữ liệu giống nhau: dashboard không lưu được JSON sai, Astro không build ra trang lỗi.</div>
+      <div class="callout">Nếu muốn gọn hơn, dashboard có thể dùng Vite + React SPA và chạy API riêng. Nhưng Next.js gộp được giao diện và API vào một chỗ, nên vẫn tiện hơn cho team nhỏ.</div>
+    </section>
+
+    <section id="tracking">
+      <h2><span class="num">08</span>Tracking</h2>
+      <p class="lead">Biết traffic đến từ đâu và card nào hiệu quả, rồi đưa dữ liệu ngược vào thuật toán xếp hạng.</p>
+      <div class="grid-2">
+        <div class="box"><h4>Nguồn traffic</h4><ul><li>Mỗi page nguồn = 1 slug riêng (<code>/fanpage-abc</code>), nên không phụ thuộc referrer (in-app browser hay làm mất referrer)</li><li>Gắn UTM vào banner Linktree</li></ul></div>
+        <div class="box"><h4>Click event</h4><ul><li>GA4 + <code>navigator.sendBeacon</code>: gửi <code>slug</code>, <code>blockId</code>, vị trí card</li><li>Không đi qua trang redirect <code>/go/...</code> để tránh thêm độ trễ</li></ul></div>
+      </div>
+      <div class="callout info"><b>Vòng phản hồi:</b> click → viral score → card được bấm nhiều tự lên trên.</div>
+    </section>
+
+    <section id="ops">
+      <h2><span class="num">09</span>Vận hành &amp; phân quyền</h2>
+      <p class="lead">Các trigger build lại và cách giữ build nhanh khi có nhiều slug.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Trigger</th><th>Khi nào</th></tr></thead>
+          <tbody>
+            <tr><td><b>Webhook</b></td><td>Marketing bấm Publish trên dashboard</td></tr>
+            <tr><td><b>Cron</b></td><td>Mỗi 15 phút / 1 giờ (bản rẻ: 3 lần/ngày)</td></tr>
+            <tr><td><b>n8n</b></td><td>Phát hiện post có tốc độ tăng view đột biến</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Lưu ý</h3>
+      <div class="grid-2">
+        <div class="box"><h4>Build incremental</h4>Chỉ build lại slug đã thay đổi (so <code>updatedAt</code>), không build cả 100 page mỗi lần.</div>
+        <div class="box"><h4>sitemap.xml</h4>Sinh từ danh sách slug. Build job đọc file này để build từng slug, không phụ thuộc backend.</div>
+        <div class="box"><h4>Purge cache</h4>Sau khi deploy, purge cache CDN theo từng slug.</div>
+        <div class="box"><h4>Headless test</h4>Playwright chụp màn hình và smoke-test từng slug sau khi build.</div>
+      </div>
+      <div class="callout">n8n chạy song song thì nhanh để làm prototype, nhưng webhook phía Google chậm hơn, vậy nên giữ cron làm phương án dự phòng.</div>
+
+      <h3>Phân quyền dashboard (đề xuất)</h3>
+      <p class="lead" style="margin-bottom:12px">Nhiều người cùng quản lý nhiều page, nên cần phân quyền ngay từ bản đầu có backend. Giữ đơn giản: 3 vai trò, giao quyền theo từng slug.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Vai trò</th><th>Được làm</th><th>Không được làm</th></tr></thead>
+          <tbody>
+            <tr><td><b>Admin</b></td><td>Tạo/xóa slug, đổi tên slug, giao slug cho người khác, sửa theme, quản lý user</td><td>Không giới hạn</td></tr>
+            <tr><td><b>Editor</b></td><td>Chỉ với slug được giao: thêm/sửa/xóa block, ghim, đổi thứ tự, bấm Publish, rollback</td><td>Đổi tên slug, sửa slug không được giao</td></tr>
+            <tr><td><b>Viewer</b></td><td>Xem analytics, xem preview</td><td>Mọi thao tác sửa</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
+        <div class="box"><h4>Chỉ Admin được đổi tên slug</h4>Slug chính là URL mà banner Linktree đang trỏ tới. Đổi slug mà quên sửa Linktree thì toàn bộ traffic của page đó vào trang lỗi. Khi đổi, tự tạo redirect từ slug cũ.</div>
+        <div class="box"><h4>Lịch sử phiên bản + rollback</h4>Mỗi lần Publish lưu 1 bản JSON. Ai sửa sai thì quay lại bản trước trong 1 bấm, và có log ai sửa gì, lúc nào.</div>
+        <div class="box"><h4>Draft → Publish</h4>Sửa ở bản nháp, xem preview, rồi mới Publish để trigger rebuild. Chưa cần bước duyệt; thêm sau nếu team lớn.</div>
+        <div class="box"><h4>Lộ trình</h4>Mock UI: chưa cần đăng nhập. Bản có backend: thêm 3 vai trò trên. Sau đó mới tính nhóm slug theo brand/team nếu số page tăng mạnh.</div>
+      </div>
+      <div class="callout info"><b>Đã có trong demo (<code>demo/editor.html</code>):</b> trạng thái bản nháp / đang chạy, nút <b>Publish</b> kèm tóm tắt thay đổi và ghi chú, <b>Lịch sử phiên bản</b> (ai publish, lúc nào, thay đổi gì), <b>Khôi phục</b> = publish lại nội dung bản cũ thành phiên bản mới, lịch sử không bị xóa. Demo lưu ở localStorage và chỉ giả lập webhook build; bản thật cần bảng <code>versions</code> trong DB và gọi webhook build lại slug.</div>
+    </section>
+
+    <section id="risks">
+      <h2><span class="num">10</span>Rủi ro &amp; câu hỏi</h2>
+      <p class="lead">Những điều cần theo dõi và cần team làm rõ.</p>
+      <div class="grid-2">
+        <div class="box bad"><h4>Domain chưa được tin cậy</h4>Link trỏ thẳng về domain mới dễ bị FB/TikTok đánh dấu. Vì vậy vẫn cần Linktree làm bước trung gian. Nên dùng domain cũ, có HTTPS, có nội dung thật.</div>
+        <div class="box bad"><h4>Thêm 1 bước bấm</h4>Conversion sẽ giảm. Cần đo tỉ lệ banner → landing page ngay từ đầu.</div>
+        <div class="box bad"><h4>Điều khoản Linktree</h4>Kiểm tra việc chỉ để 1 banner trỏ ra ngoài có ổn không.</div>
+        <div class="box bad"><h4>API FB/TikTok</h4>Quyền truy cập, rate limit, token hết hạn khi lấy stats post.</div>
+      </div>
+      <h3>Câu hỏi cho team</h3>
+      <div class="q">"hustner" và câu "không đụng với…" (bị cắt giữa chừng) nghĩa là gì?</div>
+      <div class="q">Mỗi slug ứng với 1 social page, hay 1 page có thể có nhiều slug để A/B test?</div>
+      <div class="q">Viral score lấy dữ liệu từ đâu: API nền tảng, click nội bộ, hay cả hai?</div>
+    </section>
+
+    <section id="mvp">
+      <h2><span class="num">11</span>Task Mock UI (làm trước)</h2>
+      <p class="lead">Mục tiêu: luồng <b>JSON → static page</b> chạy được hoàn toàn trên local, sẵn sàng nối DB và n8n sau.</p>
+      <ol class="steps">
+        <li><b>Dựng monorepo</b><span><code>apps/dashboard</code> (Next.js), <code>apps/landing</code> (Astro), <code>packages/schema</code>, <code>packages/templates</code>, <code>packages/runtime</code> (mục 7).</span></li>
+        <li><b>JSON mẫu</b><span>2–3 file (<code>fanpage-a.json</code>, <code>tiktok-b.json</code>) theo schema ở mục 4.</span></li>
+        <li><b>sitemap.xml mẫu</b><span>Liệt kê các slug.</span></li>
+        <li><b>Bộ component + BlockRenderer</b><span>Avatar, subtitle, social, card, carousel, hero video.</span></li>
+        <li><b>3 template + manifest</b><span><code>classic</code>, <code>video-first</code>, <code>shop-grid</code>, mỗi cái có <code>template.json</code> khai báo vùng và theme mặc định (mục 5).</span></li>
+        <li><b>Build static bằng Astro</b><span>Đọc sitemap rồi sinh <code>/{slug}/index.html</code> theo template của slug, không gọi backend. JS client compile bằng Google Closure Compiler (ADVANCED).</span></li>
+        <li><b>Route /preview trong Astro</b><span>Bật SSR riêng cho route này, nhận draft JSON và render bằng template production.</span></li>
+        <li><b>Dashboard mock (Next.js)</b><span>Chọn template, kéo block vào từng vùng, chỉnh theme, preview trong iframe trỏ tới <code>/preview</code>, xuất JSON. Chưa cần đăng nhập và DB, lưu JSON ra file là đủ.</span></li>
+        <li><b>Test thiết bị</b><span>Kiểm tra trên mobile và trong in-app browser FB/TikTok.</span></li>
+      </ol>
+      <div class="callout"><b>Trạng thái:</b> thư mục <code>demo/</code> là bản phác UI bằng HTML/JS thuần, chưa phải monorepo Astro + Next.js ở bước 1. Đã có: JSON mẫu theo schema mục 4 (bước 2), bộ component + BlockRenderer (bước 4), 3 template + manifest (bước 5), editor mock có kéo block vào vùng, theme ghi đè, Publish và lịch sử (một phần bước 8). Chưa có: monorepo, <code>sitemap.xml</code>, build bằng Astro, compile Closure, route <code>/preview</code>, test trên thiết bị thật. Khi dựng monorepo, chuyển <code>demo/templates</code> sang <code>packages/templates</code> và <code>demo/assets/render.js</code> làm cơ sở cho <code>packages/runtime</code>.</div>
+    </section>
+
+    <section id="ext">
+      <h2><span class="num">12</span>Mở rộng: block mới, sản phẩm affiliate, Subscribe</h2>
+      <p class="lead">Phần đã làm thử trong demo nhưng chưa có trong các mục trên. Cần team duyệt trước khi đưa vào bản thật.</p>
+
+      <h3>Block mới</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Type</th><th>Dùng cho</th><th>Vùng hợp lý</th></tr></thead>
+          <tbody>
+            <tr><td><code>release</code></td><td>Bìa lớn trên nền màu + nút CTA (bài hát, ebook, sản phẩm chủ lực)</td><td>hero</td></tr>
+            <tr><td><code>video</code></td><td>Slider nhiều video, nút ← →</td><td>hero, main</td></tr>
+            <tr><td><code>events</code></td><td>Lịch sự kiện / tour: ngày, địa điểm, nút mua vé</td><td>main</td></tr>
+            <tr><td><code>products</code></td><td>Lưới sản phẩm nhập tay (ảnh, tên, giá)</td><td>main</td></tr>
+            <tr><td><code>shop</code></td><td>Sản phẩm affiliate lấy từ thư viện, mỗi bộ sưu tập là 1 tab</td><td>main</td></tr>
+            <tr><td><code>subscribe</code></td><td>Form nhận email</td><td>footer</td></tr>
+            <tr><td><code>nav</code> (cờ của slug)</td><td>Dock điều hướng nổi ở đáy, nhảy tới các block có tiêu đề</td><td>toàn trang</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">Mỗi block mới là thêm 1 component Astro + 1 type trong <code>packages/schema</code>, rồi khai báo vào <code>allow</code> của template cần dùng. Theo mục 6, JS client vẫn phải nhỏ: <code>video</code> (nút ← →), <code>shop</code> (đổi tab) và <code>subscribe</code> là 3 block cần JS, nên viết vào runtime Closure.</div>
+
+      <h3>Module sản phẩm affiliate</h3>
+      <div class="flow">
+        <div class="node"><b>Dán link sản phẩm</b><small>trang Sản phẩm của dashboard</small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>API đọc metadata</b><small>Next.js API route: JSON-LD → Open Graph → &lt;title&gt;</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Tạo affiliate URL</b><small>theo mạng: Shopee, Lazada, Tiki, Amazon, TikTok Shop, Shopify, link ngoài</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Bộ sưu tập</b><small>tối đa 20 sản phẩm, block <code>shop</code> chọn bộ sưu tập</small></div>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
+        <div class="box"><h4>Dữ liệu</h4><ul><li>Bảng <code>products</code> (url gốc, affiliateUrl, mạng, tên, ảnh, giá, tiền tệ, ẩn/hiện) và <code>collections</code> (danh sách id có thứ tự), dùng chung cho mọi slug.</li><li>Khi build, ghi sẵn sản phẩm của các bộ sưu tập vào JSON của slug, để trang vẫn static, không gọi API lúc khách xem.</li></ul></div>
+        <div class="box"><h4>Lấy metadata</h4><ul><li>Không lấy được (sàn chặn bot, trang render bằng JS) thì hiện form điền tay; affiliate link vẫn tự tạo.</li><li>Shopee/Lazada nên dùng API của sàn hoặc headless browser. Bản mẫu: <code>demo/tools/meta-server.js</code>.</li></ul></div>
+        <div class="box"><h4>Affiliate link</h4><ul><li>Bản thật gọi API tạo link của từng mạng (Shopee, Lazada có API cho publisher). Demo chỉ gắn tham số giả + UTM.</li><li>Bấm sản phẩm đi thẳng tới affiliate link, không qua <code>/go/</code> (giữ nguyên quyết định ở mục 8); tracking qua GA4 + sendBeacon với <code>blockId</code> = id sản phẩm.</li></ul></div>
+        <div class="box"><h4>Cần xác nhận</h4><ul><li>Tài khoản affiliate của từng sàn, ai giữ ID.</li><li>Hoa hồng thật lấy từ báo cáo của sàn; số trên dashboard demo chỉ là ước tính.</li><li>Giới hạn 20 sản phẩm / bộ sưu tập (theo cách Linktree làm) có phù hợp không.</li></ul></div>
+      </div>
+
+      <h3>Endpoint cho Subscribe</h3>
+      <div class="flow">
+        <div class="node"><b>Form trên landing</b><small>static, JS runtime gửi bằng <code>fetch</code></small></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Webhook n8n</b><small>hoặc API route của dashboard</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Lưu email</b><small>DB / Google Sheet / công cụ email marketing, kèm <code>slug</code></small></div>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
+        <div class="box"><h4>Vì sao không ảnh hưởng mục tiêu 2</h4>Trang vẫn static trên CDN. Chỉ lúc khách bấm Subscribe mới có 1 request tới webhook, lượng nhỏ hơn nhiều so với lượt xem trang.</div>
+        <div class="box"><h4>Chống spam &amp; pháp lý</h4><ul><li>Honeypot field + rate limit theo IP ở webhook.</li><li>Ghi rõ mục đích thu email; nên có double opt-in.</li><li>CORS chỉ cho domain landing.</li></ul></div>
+      </div>
+    </section>
+
+    <footer>Smart Link-in-Bio · bản brainstorm · 19/11/2026</footer>
+  </main>
+</div>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  try{var saved=localStorage.getItem('plan-theme'); if(saved) root.setAttribute('data-theme',saved);}catch(e){}
+  btn.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme');
+    if(!cur){cur=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+    var next=cur==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    try{localStorage.setItem('plan-theme',next);}catch(e){}
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+---
+/**
+ * TemplateLayout (plan mục 5–6): render đầy đủ 1 slug theo template của nó.
+ * Dùng chung cho trang static /{slug} và route /preview (dashboard) → preview giống hệt trang thật.
+ * Khác biệt giữa các template nằm ở manifest (vùng, allow, variant, desktop) + CSS (data-template).
+ */
+import {
+  REGIONS, isWide, luminance, regionBlocks, rankOf, templateOf, themeOf, variantOf,
+  type Block, type ProductDb, type Site,
+} from "@bio-link/schema";
+import { templates } from "@bio-link/templates";
+import ProfileHeader from "../components/ProfileHeader.astro";
+import BlockRenderer from "../components/BlockRenderer.astro";
+import Dock from "../components/Dock.astro";
+import { coverStyle } from "../lib/icons";
+import "../styles/page.css";
+
+interface Props { site: Site; products: ProductDb; preview?: boolean }
+const { site, products, preview = false } = Astro.props;
+
+const WEB_FONTS = new Set(["Sora", "Manrope", "Inter", "DM Sans", "Be Vietnam Pro"]);
+const tpl = templateOf(site, templates);
+const theme = themeOf(site, tpl);
+const bg = theme.bg || "#F7F7F7";
+const lum = luminance(bg);
+const radius = Number(theme.radius) || 28;
+const font = theme.font || "Sora";
+const style = [
+  `--lb-bg:${bg}`,
+  `--lb-accent:${theme.accent || "#CBD77E"}`,
+  `--lb-r:${radius}px`,
+  `--lb-r-in:${Math.round(radius * 0.72)}px`,
+  `--lb-cols:${tpl.desktopColumns}`,
+  `--lb-font:"${font}",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`,
+].join(";");
+
+let pos = 0;
+const regions = REGIONS.map((name) => {
+  const variant = name === "main" ? variantOf(site, tpl, name) : "list";
+  const blocks = regionBlocks(site, tpl, name).map((b) => ({ b, pos: pos++ }));
+  // carousel: block nhỏ liền nhau gom vào 1 hàng vuốt ngang, block rộng nằm riêng
+  const groups: Array<{ track: boolean; items: { b: Block; pos: number }[] }> = [];
+  for (const it of blocks) {
+    const inTrack = variant === "carousel" && !isWide(it.b);
+    const last = groups[groups.length - 1];
+    if (inTrack && last?.track) last.items.push(it);
+    else groups.push({ track: inTrack, items: [it] });
+  }
+  return { name, variant, rank: rankOf(site, tpl, name), groups, count: blocks.length };
+});
+const ordered = regions.flatMap((r) => r.groups.flatMap((g) => g.items.map((i) => i.b)));
+const beacon = import.meta.env.PUBLIC_BEACON_URL ?? "";
+const ogImage = site.profile.cover || site.profile.avatar;
+---
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{site.profile.title}{site.profile.subtitle ? ` · ${site.profile.subtitle}` : ""}</title>
+  <meta name="description" content={site.profile.about || site.profile.subtitle || ""} />
+  <meta property="og:title" content={site.profile.title} />
+  <meta property="og:description" content={site.profile.about || site.profile.subtitle || ""} />
+  {ogImage && <meta property="og:image" content={ogImage} />}
+  {preview && <meta name="robots" content="noindex" />}
+  <link rel="icon" href="/favicon.svg" />
+  {WEB_FONTS.has(font) && <>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${font.replace(/\s+/g, "+")}:wght@300;400;500;600;700&display=swap`} />
+  </>}
+  <style is:global>html,body{margin:0;min-height:100%}body{background:var(--lb-bg,#F7F7F7)}#app{min-height:100vh}</style>
+</head>
+<body>
+  <div
+    id="app"
+    class:list={["lb-root", `lb-d-${tpl.desktop}`, { "lb-dark": lum < 0.5, "lb-white": lum > 0.985, "lb-btn-rounded": theme.button === "rounded" }]}
+    style={style}
+    data-template={tpl.id}
+    data-slug={site.slug}
+    data-beacon={beacon}
+    data-preview={preview ? "1" : undefined}
+  >
+    <div class="lb-cover" style={site.profile.cover ? coverStyle(site.profile.cover, "cover") : undefined} />
+    <div class="lb-page">
+      <ProfileHeader profile={site.profile} />
+      <div class="lb-blocks">
+        {regions.filter((r) => r.count > 0).map((r) => (
+          <div class={`lb-region lb-r-${r.name} lb-v-${r.variant}`} data-region={r.name} data-rank={r.rank ? "1" : undefined}>
+            {r.groups.map((g) => g.track
+              ? <div class="lb-track">{g.items.map((it) => <BlockRenderer b={it.b} pos={it.pos} products={products} />)}</div>
+              : g.items.map((it) => <BlockRenderer b={it.b} pos={it.pos} products={products} />))}
+          </div>
+        ))}
+      </div>
+      {site.nav && <Dock blocks={ordered} />}
+      <footer class="lb-foot">Smart Link-in-Bio</footer>
+    </div>
+  </div>
+  <!-- Runtime compile bằng Closure ADVANCED; is:inline để Vite của Astro không bundle lại (plan mục 6). -->
+  <script is:inline src="/runtime.js" defer></script>
+</body>
+</html>

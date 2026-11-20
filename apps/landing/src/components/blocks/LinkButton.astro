@@ -1,0 +1,14 @@
+---
+/** Link: pill trắng; "primary" = pill tối nổi bật. */
+import type { Block } from "@bio-link/schema";
+import TLink from "../TLink.astro";
+import Round from "../Round.astro";
+interface Props { b: Block; pos: number; cls: string; attrs: Record<string, string> }
+const { b, pos, cls, attrs } = Astro.props;
+const primary = !!b.primary;
+---
+<TLink class={["lb-block lb-link", { "lb-link-primary": primary }, cls]} href={b.url} track={b.id} pos={pos} {...attrs}>
+  {primary && <Round name={typeof b.icon === "string" ? b.icon : "bolt"} class="lb-round-olive" />}
+  <span class="lb-link-t">{b.text || b.url}</span>
+  <Round name="arrow-ur" class={primary ? "lb-round-white" : ""} />
+</TLink>

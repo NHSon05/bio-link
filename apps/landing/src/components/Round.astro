@@ -1,0 +1,7 @@
+---
+/** Nút tròn có icon (vd. mũi tên ↗ ở cuối card). */
+import Icon from "./Icon.astro";
+interface Props { name: string; class?: string }
+const { name, class: cls } = Astro.props;
+---
+<span class:list={["lb-round", cls]}><Icon name={name} /></span>

@@ -1,0 +1,28 @@
+---
+import type { Site } from "@bio-link/schema";
+import { ICONS, coverStyle } from "../lib/icons";
+import Icon from "./Icon.astro";
+import TLink from "./TLink.astro";
+interface Props { profile: Site["profile"] }
+const { profile: p } = Astro.props;
+---
+<header class:list={["lb-profile", { "lb-has-cover": !!p.cover }]} id="top">
+  {p.cover && <div class="lb-pcover" style={coverStyle(p.cover, "cover")} />}
+  {p.avatar
+    ? <img class="lb-avatar" src={p.avatar} alt="" />
+    : <div class="lb-avatar lb-avatar-blob">{(p.title || "?").charAt(0).toUpperCase()}</div>}
+  <div class="lb-pinfo">
+    <h1 class="lb-title">{p.title}</h1>
+    {p.subtitle && <p class="lb-subtitle">{p.subtitle}</p>}
+    {p.about && <p class="lb-about">{p.about}</p>}
+    {p.socials.length > 0 && (
+      <div class="lb-socials">
+        {p.socials.map((s, i) => (
+          <TLink class="lb-social" href={s.url} track={`social-${s.type}`} pos={i} title={s.type} aria-label={s.type}>
+            <Icon name={ICONS[s.type] ? s.type : "website"} />
+          </TLink>
+        ))}
+      </div>
+    )}
+  </div>
+</header>

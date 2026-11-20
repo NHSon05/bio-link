@@ -1,0 +1,25 @@
+---
+/** Trang gốc: chỉ để dev xem nhanh danh sách slug. Production có thể redirect hoặc bỏ. */
+import { loadBuildSites } from "../lib/data";
+
+const sites = await loadBuildSites();
+---
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>bio-link landing</title>
+  <style>
+    body{font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:560px;margin:40px auto;padding:0 16px;color:#282828;background:#F7F7F7}
+    a{color:inherit} li{margin:6px 0} code{background:#ececea;padding:1px 6px;border-radius:5px}
+  </style>
+</head>
+<body>
+  <h1>Slugs</h1>
+  <ul>
+    {sites.map((s) => <li><a href={`/${s.slug}/`}>{s.profile.title}</a> · <code>{s.template}</code> · <a href={`/${s.slug}.json`}>json</a></li>)}
+  </ul>
+</body>
+</html>

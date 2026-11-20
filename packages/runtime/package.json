@@ -1,0 +1,12 @@
+{
+  "name": "@bio-link/runtime",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "google-closure-compiler": "20261028.0.0"
+  }
+}

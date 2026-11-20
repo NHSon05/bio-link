@@ -1,0 +1,9 @@
+---
+/**
+ * Thẻ <a> có tracking click. Không gắn JS vào từng link: runtime (Closure) bắt click
+ * ở document và đọc data-track / data-pos rồi gửi GA4 + sendBeacon (plan mục 8).
+ */
+interface Props { href?: string; track: string; pos: string | number; class?: unknown; [k: string]: unknown }
+const { href, track, pos, class: cls, ...rest } = Astro.props;
+---
+<a class:list={[cls]} href={href || "#"} target="_blank" rel="noopener" draggable="false" data-track={track} data-pos={String(pos)} {...rest}><slot /></a>
