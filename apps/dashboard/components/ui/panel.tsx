@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@bio-link/ui/components/card";
-import { cn } from "@bio-link/ui/lib/utils";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type PanelProps = Omit<ComponentProps<typeof Card>, "title"> & {
   title?: ReactNode;

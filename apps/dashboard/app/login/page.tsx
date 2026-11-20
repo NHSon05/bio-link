@@ -1,7 +1,7 @@
-import { Button } from "@bio-link/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@bio-link/ui/components/card";
-import { Separator } from "@bio-link/ui/components/separator";
-import { BrandMark } from "@bio-link/ui/components/topbar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { BrandMark } from "@/components/ui/topbar";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { safeNext } from "@/lib/auth";

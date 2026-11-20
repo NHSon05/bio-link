@@ -1,7 +1,7 @@
 "use client";
 
-import { ToggleGroup, ToggleGroupItem } from "@bio-link/ui/components/toggle-group";
-import { cn } from "@bio-link/ui/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 
 type Option<T extends string> = { value: T; label: string };
 

@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@bio-link/ui"],
   cacheComponents: true,
   partialPrefetching: true,
   reactCompiler: true,
