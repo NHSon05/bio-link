@@ -1,7 +1,7 @@
 /*
  * Design tokens của dashboard — nguồn duy nhất cho màu, chữ, font, viền.
  * Chỉ dùng trong apps/dashboard; landing KHÔNG import file này
- * (trang public dùng page.css, trang nội bộ của landing dùng @bio-link/ui/globals.css).
+ * (landing có design system riêng trong apps/landing/src/styles/page.css).
  *
  * Ba tầng:
  *   1. Primitive  (--palette-*, --font-size-*, --border-width-*)  — giá trị thô, không dùng trực tiếp trong component.

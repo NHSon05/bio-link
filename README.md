@@ -37,9 +37,10 @@ Start the dashboard with `pnpm dev:dashboard` and the internal Astro preview wit
 
 ## Design system
 
-`packages/ui` (`@bio-link/ui`) holds the shadcn/ui components and the theme from the demo (Sora, #282828, #F7F7F7, olive #CBD77E, hazel #E6CA9A). Both apps import `@bio-link/ui/globals.css` and components such as `@bio-link/ui/components/button`. Dark mode follows the OS; add `.dark` or `.light` on `<html>` to force one.
+Each app has its own design system, built on the same brand palette (Sora, #282828, #F7F7F7, olive #CBD77E, hazel #E6CA9A):
 
-Add a shadcn component from either app, for example `cd apps/dashboard && pnpm dlx shadcn@latest add tooltip`; the CLI writes it to `packages/ui/src/components`. In Astro, use the components only on internal pages that import `src/styles/ui.css` (the slug hub); the public link pages keep `page.css` without Tailwind. Astro renders them to static HTML, so pass data as props from a `.tsx` wrapper rather than `.astro` children, and add a `client:*` directive only for interactive components.
+- **Dashboard — shadcn/ui.** Tokens for color, text, font, and border live in `apps/dashboard/styles/tokens.css` and map to Tailwind classes in `apps/dashboard/styles/theme.css`. Reuse components from `apps/dashboard/components/ui`. Use the [dashboard component rules](apps/dashboard/AGENTS.md#dashboard-ui-components) to add a missing component. Dark mode follows the OS. Set `.dark` or `.light` on `<html>` to override it.
+- **Landing — custom CSS, no Tailwind or React.** Every page uses `apps/landing/src/styles/page.css` and its `--lb-*` variables, scoped under `.lb-root`. The internal slug hub (`/`) adds `src/styles/hub.css` on top.
 
 ## Code style
 

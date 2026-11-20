@@ -120,6 +120,147 @@ a:hover .lb-pr-go {
   white-space: nowrap;
 }
 
+/* Nút chữ (components/Button.astro): mặc định nền ink, .lb-button-outline nền card có viền */
+.lb-root .lb-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 99px;
+  font: inherit;
+  font-size: 12.8px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--lb-ink);
+  color: var(--lb-on-ink);
+  transition: background 0.2s;
+}
+.lb-root .lb-button-outline {
+  background: var(--lb-card);
+  border-color: var(--lb-line);
+  color: var(--lb-text);
+}
+.lb-root .lb-button-outline:hover {
+  background: var(--lb-soft);
+}
+
+/* Logo linkbio (components/BrandMark.astro) */
+.lb-brand-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: #282828;
+  background:
+    radial-gradient(circle at 25% 20%, var(--lb-hazel) 0, transparent 60%),
+    radial-gradient(circle at 80% 85%, #b9cb5c 0, transparent 55%), #dce5ae;
+}
+.lb-brand-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Thanh trên cùng (components/Topbar.astro) */
+.lb-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--lb-bg) 90%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.lb-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.lb-topbar-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px;
+  border-radius: 99px;
+  background: var(--lb-card);
+  box-shadow: var(--lb-shadow);
+}
+.lb-root .lb-topbar-nav a {
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 13.5px;
+  color: var(--lb-muted);
+}
+.lb-root .lb-topbar-nav a:hover {
+  color: var(--lb-text);
+}
+.lb-root .lb-topbar-nav a[aria-current="page"] {
+  background: var(--lb-ink);
+  color: var(--lb-on-ink);
+}
+@media (min-width: 768px) {
+  .lb-topbar {
+    padding: 12px 24px;
+  }
+  .lb-root .lb-topbar-nav a {
+    padding: 7px 16px;
+  }
+}
+
+/* Khung điện thoại 320 × 650 (components/PhoneFrame.astro); nội dung cuộn trong màn hình */
+.lb-phone {
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+  height: 650px;
+  overflow: hidden;
+  border: 9px solid #282828;
+  border-radius: 44px;
+  background: #282828;
+  box-shadow: 0 30px 60px rgba(40, 40, 40, 0.18);
+}
+.lb-phone::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 2;
+  width: 96px;
+  height: 26px;
+  border-radius: 99px;
+  background: #141414;
+  transform: translateX(-50%);
+}
+.lb-phone-screen {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  border-radius: 35px;
+  background: #ffffff;
+}
+.lb-phone-screen::-webkit-scrollbar {
+  display: none;
+}
+.lb-phone-screen > iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 .lb-cover {
   display: none;
   background:

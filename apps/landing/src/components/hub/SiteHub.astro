@@ -1,0 +1,102 @@
+---
+/**
+ * Hub nội bộ: liệt kê mọi slug kèm preview điện thoại (demo/index.html).
+ * Dùng design system của trang link (page.css + hub.css), không Tailwind, không JavaScript.
+ */
+import Button from "../Button.astro";
+import Chip from "../Chip.astro";
+import PhoneFrame from "../PhoneFrame.astro";
+import Topbar from "../Topbar.astro";
+
+export type HubSite = { slug: string; title: string; template: string; platform?: string };
+
+interface Props {
+  sites: HubSite[];
+  dashboardUrl: string;
+}
+const { sites, dashboardUrl } = Astro.props;
+
+const nav = [
+  { href: "/", label: "Các slug" },
+  { href: dashboardUrl, label: "Dashboard" },
+];
+const flow = ["Banner Linktree", "/{slug}", "{slug}.json", "GA4 click"];
+const swatches = [
+  { name: "Lunar Shadow", role: "Primary", hex: "#282828", style: "background:#282828;color:#fff" },
+  {
+    name: "Clean White",
+    role: "BG 1",
+    hex: "#FFFFFF",
+    style: "background:#fff;color:#282828;box-shadow:inset 0 0 0 1px var(--lb-line)",
+  },
+  { name: "Gray Whisper", role: "BG 2", hex: "#F7F7F7", style: "background:var(--lb-soft);color:#282828" },
+  { name: "Gentle Olive", role: "Accent 1", hex: "#CBD77E", style: "background:var(--lb-olive);color:#282828" },
+  { name: "Winter Hazel", role: "Accent 2", hex: "#E6CA9A", style: "background:var(--lb-hazel);color:#282828" },
+];
+---
+
+<Topbar items={nav} current="/" />
+
+<main class="lb-hub-main">
+  <section class="lb-hub-hero">
+    <h1>
+      Mỗi social page,
+      <br />
+      một landing page riêng
+    </h1>
+    <div>
+      <p>
+        Nội dung và thứ tự riêng cho từng slug, xếp theo <b>pinned → viral score → mới nhất</b>. Mobile gọn nhẹ cho
+        in-app browser; trên máy tính mỗi slug có layout riêng.
+      </p>
+      <div class="lb-hub-flow">
+        {flow.map((step, i) => (
+          <>
+            {i > 0 && <i>→</i>}
+            <span>{step}</span>
+          </>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Bảng màu" class="lb-hub-swatches">
+    {swatches.map((s) => (
+      <div class="lb-hub-swatch" style={s.style}>
+        <div>
+          <b>{s.name}</b>
+          <small>{s.role}</small>
+        </div>
+        <span>{s.hex}</span>
+      </div>
+    ))}
+  </section>
+
+  <div class="lb-hub-head">
+    <h2>Các slug</h2>
+    <span>{sites.length} trang · xem như trên điện thoại</span>
+  </div>
+
+  <div class="lb-hub-grid">
+    {sites.map((site) => (
+      <article class="lb-hub-card">
+        <div class="lb-hub-card-head">
+          <h3>/{site.slug}</h3>
+          <div class="lb-hub-tags">
+            <Chip>{site.template}</Chip>
+            {site.platform && <Chip>{site.platform}</Chip>}
+          </div>
+          <div class="lb-hub-actions">
+            <Button variant="outline" href={`/${site.slug}.json`}>
+              JSON
+            </Button>
+            <Button href={`/${site.slug}/`}>Mở trang ↗</Button>
+          </div>
+        </div>
+        <PhoneFrame>
+          <iframe src={`/${site.slug}/`} title={site.title} loading="lazy"></iframe>
+        </PhoneFrame>
+      </article>
+    ))}
+  </div>
+</main>

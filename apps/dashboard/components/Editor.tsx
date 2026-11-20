@@ -319,7 +319,7 @@ export default function Editor({ landingUrl, email }: Props) {
                       })
                     }
                     className={cn(
-                      "border-thick flex flex-col gap-1 rounded-[22px] border-transparent bg-muted p-3 text-left text-sm font-semibold",
+                      "flex flex-col gap-1 rounded-[22px] border-thick border-transparent bg-muted p-3 text-left text-sm font-semibold",
                       draft.template === id && "border-olive bg-accent",
                     )}
                   >
@@ -499,7 +499,7 @@ export default function Editor({ landingUrl, email }: Props) {
                       <ul className="flex flex-col gap-2">
                         {ids.map((id, i) => byId.get(id) && blockRow(byId.get(id)!, r, i, ids.length))}
                         {!ids.length && (
-                          <li className="border-thick rounded-2xl border-dashed px-3 py-3.5 text-center text-xs text-muted-foreground">
+                          <li className="rounded-2xl border-thick border-dashed px-3 py-3.5 text-center text-xs text-muted-foreground">
                             Trống
                           </li>
                         )}
@@ -509,8 +509,8 @@ export default function Editor({ landingUrl, email }: Props) {
                 })}
 
                 {unplaced.length > 0 && (
-                  <section className="border-thick rounded-3xl border-dashed p-3">
-                    <h3 className="text-md mx-1 mb-2.5 font-semibold">Block chưa dùng</h3>
+                  <section className="rounded-3xl border-thick border-dashed p-3">
+                    <h3 className="mx-1 mb-2.5 text-md font-semibold">Block chưa dùng</h3>
                     <ul className="flex flex-col gap-2">
                       {unplaced.map((b, i) => blockRow(b, null, i, unplaced.length))}
                     </ul>

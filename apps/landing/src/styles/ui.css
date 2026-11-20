@@ -1,9 +1,0 @@
-/*
- * Design system for internal pages (hub, tooling). Import it only in those pages:
- * the public link pages use page.css and must stay free of Tailwind's reset.
- */
-@import "@bio-link/ui/globals.css";
-
-@source "../pages";
-@source "../layouts";
-@source "../components";

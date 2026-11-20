@@ -12,7 +12,7 @@ export function BrandMark({ className }: { className?: string }) {
     <span
       data-slot="brand-mark"
       style={{ background: BRAND_GRADIENT }}
-      className={cn("text-ink grid size-[34px] flex-none place-items-center rounded-[11px]", className)}
+      className={cn("grid size-[34px] flex-none place-items-center rounded-[11px] text-ink", className)}
     >
       <svg
         viewBox="0 0 24 24"
@@ -69,7 +69,7 @@ export function Topbar({ items, current, home = "/", linkAs: A = "a", className,
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "text-md rounded-full px-3 py-1.5 no-underline md:px-4 md:py-[7px]",
+                "rounded-full px-3 py-1.5 text-md no-underline md:px-4 md:py-[7px]",
                 active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >

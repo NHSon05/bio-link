@@ -1,0 +1,11 @@
+---
+/** Nhãn nhỏ bo tròn (vd. template, platform). */
+interface Props {
+  class?: string;
+}
+const { class: cls } = Astro.props;
+---
+
+<span class:list={["lb-chip", cls]}>
+  <slot />
+</span>

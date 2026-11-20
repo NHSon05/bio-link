@@ -1,8 +1,9 @@
 ---
 /** Trang gốc: hub nội bộ để dev xem nhanh các slug. Production có thể redirect hoặc bỏ. */
-import SiteHub from "../components/hub/SiteHub";
+import SiteHub from "../components/hub/SiteHub.astro";
 import { loadBuildSites } from "../lib/data";
-import "../styles/ui.css";
+import "../styles/page.css";
+import "../styles/hub.css";
 
 const sites = (await loadBuildSites()).map((site) => ({
   slug: site.slug,
@@ -24,7 +25,7 @@ const dashboardUrl = import.meta.env.PUBLIC_DASHBOARD_URL ?? "http://localhost:3
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
   </head>
-  <body>
+  <body class="lb-root lb-hub">
     <SiteHub sites={sites} dashboardUrl={dashboardUrl} />
   </body>
 </html>

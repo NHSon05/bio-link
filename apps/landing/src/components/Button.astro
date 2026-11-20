@@ -1,0 +1,24 @@
+---
+/**
+ * Nút chữ bo tròn. Có href thì render <a>, không thì <button type="button">.
+ * variant "solid" (nền ink, mặc định) hoặc "outline" (nền card có viền).
+ */
+interface Props {
+  href?: string;
+  variant?: "solid" | "outline";
+  class?: string;
+  [k: string]: unknown;
+}
+const { href, variant = "solid", class: cls, ...rest } = Astro.props;
+const classes = ["lb-button", variant === "outline" && "lb-button-outline", cls];
+---
+
+{href ? (
+  <a class:list={classes} href={href} {...rest}>
+    <slot />
+  </a>
+) : (
+  <button class:list={classes} type="button" {...rest}>
+    <slot />
+  </button>
+)}

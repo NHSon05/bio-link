@@ -1,0 +1,31 @@
+---
+/** Thanh trên cùng dính đầu trang: logo + menu dạng viên thuốc. */
+import BrandMark from "./BrandMark.astro";
+
+export type NavItem = { href: string; label: string };
+
+interface Props {
+  items: NavItem[];
+  /** href của mục đang được chọn. */
+  current?: string;
+  /** Link của logo. */
+  home?: string;
+  class?: string;
+}
+const { items, current, home = "/", class: cls } = Astro.props;
+---
+
+<header class:list={["lb-topbar", cls]}>
+  <a href={home} class="lb-topbar-brand">
+    <BrandMark />
+    linkbio
+  </a>
+  <nav class="lb-topbar-nav">
+    {items.map((item) => (
+      <a href={item.href} aria-current={item.href === current ? "page" : undefined}>
+        {item.label}
+      </a>
+    ))}
+  </nav>
+  <slot />
+</header>

@@ -1,0 +1,13 @@
+---
+/** Khung điện thoại 320 × 650 có notch; nội dung (vd. iframe) cuộn bên trong màn hình. */
+interface Props {
+  class?: string;
+}
+const { class: cls } = Astro.props;
+---
+
+<div class:list={["lb-phone", cls]}>
+  <div class="lb-phone-screen">
+    <slot />
+  </div>
+</div>
