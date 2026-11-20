@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,9 +38,14 @@ export default function LoginForm({ next }: { next: string }) {
         />
       </div>
       {state.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.error}</AlertDescription>
+          {state.needsEmailConfirmation && (
+            <Button asChild variant="link" className="w-fit px-0">
+              <Link href="/register/resend">Gửi lại email xác nhận</Link>
+            </Button>
+          )}
+        </Alert>
       )}
       <Button type="submit" size="lg" disabled={pending}>
         {pending ? "Đang đăng nhập…" : "Đăng nhập"}

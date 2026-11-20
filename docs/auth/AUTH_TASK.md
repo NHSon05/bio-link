@@ -10,34 +10,42 @@ After each phase, record the verification command and result under its exit chec
 
 ## Phase 0 — Test harness and existing behavior
 
-- [ ] **Baseline.** Add Playwright browser and HTTP tests that can run against an isolated local dashboard and Supabase stack with Mailpit. Use unique accounts per run and clean up the test records created by the run.
-- [ ] **Baseline.** Capture the existing password login, page protection, session persistence, and sign-out behavior under `LOGIN-1`, `LOGIN-2`, and `SESSION-1`. Document how to run a single test and the full auth suite.
+- [x] **Baseline.** Add Playwright browser and HTTP tests that can run against an isolated local dashboard and Supabase stack with Mailpit. Use unique accounts per run and clean up the test records created by the run.
+- [x] **Baseline.** Capture the existing password login, page protection, session persistence, and sign-out behavior under `LOGIN-1`, `LOGIN-2`, and `SESSION-1`. Document how to run a single test and the full auth suite.
 
 **Exit check.** The baseline passes from a fresh test environment. The automated tests use local or simulated services.
 
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth` built the dashboard and passed all six tests against a fresh local Supabase project.
+
 ## Phase 1 — Password login and sign-out
 
-- [ ] **Red.** Cover rejected credentials, valid local return paths, rejected external destinations, session refresh, and access after sign-out under `LOGIN-1`, `LOGIN-2`, and `SESSION-1`.
-- [ ] **Green.** Fix any missing behavior in the current login action, redirect handling, or session refresh. Preserve the existing password login and Google entry points.
-- [ ] **Refactor.** Reuse the session client and existing form components.
+- [x] **Red.** Cover rejected credentials, valid local return paths, rejected external destinations, session refresh, and access after sign-out under `LOGIN-1`, `LOGIN-2`, and `SESSION-1`.
+- [x] **Green.** Fix any missing behavior in the current login action, redirect handling, or session refresh. Preserve the existing password login and Google entry points.
+- [x] **Refactor.** Reuse the session client and existing form components.
 
 **Exit check.** Valid login persists across reloads, errors are visible, and sign-out blocks the next protected request.
 
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth --grep 'unverified user'` failed before the fix because the login form showed the generic credential error. After handling the confirmation error and using the shadcn Alert, the full suite passed. The refresh test observed a rotated session cookie on reload. The sign-out test verified the next dashboard visit redirected to login and the sites API returned `401`.
+
 ## Phase 2 — Public authentication routes
 
-- [ ] **Red.** Test that guests can follow the registration and recovery links from `/login` and reach email confirmation and the Google callback without a redirect loop. Test that the dashboard still requires a session. Cover `SESSION-1`.
-- [ ] **Green.** Add the login links and the auth routes needed by later phases. Adjust the route guard for the specific public entry points.
-- [ ] **Refactor.** Consolidate route checks and keep callbacks separate from protected site APIs.
+- [x] **Red.** Test that guests can follow the registration and recovery links from `/login` and reach email confirmation and the Google callback without a redirect loop. Test that the dashboard still requires a session. Cover `SESSION-1`.
+- [x] **Green.** Add the login links and the auth routes needed by later phases. Adjust the route guard for the specific public entry points.
+- [x] **Refactor.** Consolidate route checks and keep callbacks separate from protected site APIs.
 
 **Exit check.** Public auth entry points are reachable and unauthenticated site requests are still rejected.
 
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth --grep 'SESSION-1 public authentication routes'` found three expected failures before the changes. The registration and recovery links were missing, and email confirmation redirected guests to login. The Google callback and access checks already passed. The full `pnpm test:auth` run with the same environment built the dashboard and passed all 11 tests. `pnpm lint` and `pnpm format:check` passed. The new pages provide entry points for the later registration, recovery, and verification phases.
+
 ## Phase 3 — Registration form and confirmation email
 
-- [ ] **Red.** Test invalid email, password mismatch, unmet password rules, successful registration with email delivery, and generic handling of duplicate addresses. Cover `SIGNUP-1`.
-- [ ] **Green.** Add the signup form and server-side validation. Enable signup with confirmation in the local test Auth settings and send the confirmation through Supabase.
-- [ ] **Refactor.** Reuse form validation where compatible with login and recovery.
+- [x] **Red.** Test invalid email, password mismatch, unmet password rules, successful registration with email delivery, and generic handling of duplicate addresses. Cover `SIGNUP-1`.
+- [x] **Green.** Add the signup form and server-side validation. Enable signup with confirmation in the local test Auth settings and send the confirmation through Supabase.
+- [x] **Refactor.** Reuse form validation where compatible with login and recovery.
 
 **Exit check.** A valid signup shows the check-your-email state and produces a Mailpit message. Invalid forms do not submit to Supabase.
+
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth --grep SIGNUP-1` failed all five initial tests on the placeholder page and passed them after implementation. The full `pnpm test:auth` run with the same environment built the dashboard and passed all 17 tests after the refactor. The signup tests confirmed Mailpit delivery, identical public responses for new and duplicate addresses, and zero Supabase signup requests for invalid forms. `pnpm lint` and `pnpm format:check` passed.
 
 ## Phase 4 — Confirm email and resend
 

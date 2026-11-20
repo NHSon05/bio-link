@@ -8,3 +8,6 @@ dist/
 packages/runtime/build/
 apps/landing/public/runtime.js
 .claude/
+
+# Kết quả chạy test của script trong skill
+.coverage

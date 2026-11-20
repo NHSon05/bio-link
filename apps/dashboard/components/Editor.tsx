@@ -6,14 +6,14 @@ import { REGIONS, layoutOf, type Block, type RegionName, type Site } from "@bio-
 import { templates, templateIds } from "@bio-link/templates";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { BrowserFrame, PhoneFrame } from "@/components/ui/device-frame";
+import { BrowserFrame, PhoneFrame } from "@/components/device-frame";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Panel, StatusPill } from "@/components/ui/panel";
-import { Segmented } from "@/components/ui/segmented";
+import { Panel, StatusPill } from "@/components/panel";
+import { Segmented } from "@/components/segmented";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Topbar } from "@/components/ui/topbar";
+import { Topbar } from "@/components/topbar";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/app/login/actions";
 import { siteRequest } from "@/lib/siteRequest";

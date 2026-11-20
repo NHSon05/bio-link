@@ -3,10 +3,12 @@ node_modules/
 dist/
 build/
 .next/
+apps/dashboard/test-results/
 .astro/
 .vercel/
 next-env.d.ts
 apps/landing/public/runtime.js
 packages/runtime/build/
 supabase/.temp/
-plan.html
+docs/plan.html
+.agents/
