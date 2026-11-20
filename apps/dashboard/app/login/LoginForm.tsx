@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@bio-link/ui/components/button";
-import { Input } from "@bio-link/ui/components/input";
-import { Label } from "@bio-link/ui/components/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useActionState } from "react";
 import { signIn, type LoginState } from "./actions";
 

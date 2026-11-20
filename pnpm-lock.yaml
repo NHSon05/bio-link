@@ -184,18 +184,27 @@ importers:
       '@bio-link/templates':
         specifier: workspace:*
         version: link:../../packages/templates
-      '@bio-link/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@supabase/ssr':
         specifier: 0.12.7
         version: 0.12.7(@supabase/supabase-js@2.119.1)
       '@supabase/supabase-js':
         specifier: ^2.119.1
         version: 2.119.1
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      cn:
+        specifier: ^0.5.2
+        version: 0.5.2
+      lucide-react:
+        specifier: ^1.75.0
+        version: 1.75.0(@types/react@19.3.0)(react@19.3.0)
       next:
         specifier: 16.4.6
         version: 16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      radix-ui:
+        specifier: ^1.8.1
+        version: 1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -205,6 +214,15 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      shadcn:
+        specifier: 4.23.0
+        version: 4.23.0(supports-color@7.2.0)
+      sonner:
+        specifier: ^2.0.8
+        version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -336,9 +354,6 @@ importers:
       shadcn:
         specifier: 4.23.0
         version: 4.23.0(supports-color@7.2.0)
-      sonner:
-        specifier: ^2.0.8
-        version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0

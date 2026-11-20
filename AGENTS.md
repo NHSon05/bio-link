@@ -10,7 +10,8 @@ pnpm monorepo (`pnpm-workspace.yaml`: `apps/*`, `packages/*`).
 - `apps/landing` — Astro. Reads published site configs at build time and emits static HTML + ranking JSON to `dist/client/`. `src/pages/[slug].astro` renders public pages; `preview.astro` is the internal server-side preview used by the dashboard.
 - `packages/schema` (`@bio-link/schema`) — Zod schema for site JSON (themes, regions, block types, layouts). Shared source of truth for both apps; change it first when adding a block type or field.
 - `packages/templates` (`@bio-link/templates`) — template manifests (`<id>/template.json`), registered in `index.ts`.
-- `packages/ui` (`@bio-link/ui`) — shadcn/ui components and theme. Add components with `pnpm dlx shadcn@latest add <name>` from an app directory; they land in `packages/ui/src/components`.
+- `packages/ui` (`@bio-link/ui`) — shadcn/ui components and theme for landing's internal pages only (badge, button, card, device-frame, topbar). Add components with `pnpm dlx shadcn@latest add <name>` from `packages/ui` or `apps/landing`; they land in `packages/ui/src/components`.
+- `apps/dashboard` does not depend on `@bio-link/ui`. It is its own shadcn project: components live in `apps/dashboard/components/ui` (`shadcn add` run there writes to it), and its design tokens (color, text, font, border) live in `apps/dashboard/styles/tokens.css` and `theme.css`. Landing must not import them.
 - `packages/runtime` — vanilla JS compiled with Closure Compiler (ADVANCED) into `apps/landing/public/runtime.js` (generated, git-ignored). Keep `src/externs.js` in sync with any external names the runtime uses.
 - `supabase/` — config, migrations, and `seed.sql` (four sample sites). Add schema changes as new timestamped files in `supabase/migrations/`; never edit an applied migration.
 

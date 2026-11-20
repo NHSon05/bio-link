@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Toaster } from "@bio-link/ui/components/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { Geist_Mono, Sora } from "next/font/google";
 import "./globals.css";
 

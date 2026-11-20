@@ -1,6 +1,16 @@
-@import "@bio-link/ui/globals.css";
+/*
+ * CSS gốc của dashboard. Design system riêng của dashboard nằm trong ../styles:
+ *   tokens.css — biến màu, chữ, font, viền (light + dark)
+ *   theme.css  — ánh xạ token sang utility Tailwind
+ * Landing không dùng các file này.
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../styles/tokens.css";
+@import "../styles/theme.css";
 
-/* Tailwind scans the design-system package by default; add this app's files. */
+/* File của dashboard (gồm component shadcn trong components/ui). */
 @source "../app";
 @source "../components";
 @source "../lib";
