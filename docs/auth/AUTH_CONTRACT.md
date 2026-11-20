@@ -1,0 +1,42 @@
+# Dashboard authentication contract
+
+This contract defines the behavior the [TDD checklist](AUTH_TASK.md) verifies. The [implementation plan](AUTH_PLAN.md) describes how to deliver it.
+
+## Routes and actions
+
+| ID        | Surface                              | Expected behavior                                                                                                                                                                                                                                                                                             |
+| --------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LOGIN-1   | `/login`                             | A verified email and correct password establish a cookie session. Redirect to a validated dashboard return path or `/`. Invalid credentials and unverified password accounts fail with a usable message.                                                                                                      |
+| LOGIN-2   | Sign-out action                      | End the current browser session and return to `/login`. Reloading a protected page requires sign-in again.                                                                                                                                                                                                    |
+| SESSION-1 | Dashboard pages and auth routes      | A guest visiting a protected page goes to `/login`. Login, registration, recovery requests, email confirmation, and the Google callback are reachable before sign-in. A valid session survives reload and refresh.                                                                                            |
+| SIGNUP-1  | `/register` and resend action        | Accept email, password, and matching password confirmation. Enforce the configured password rules on the server. Show a check-your-email result after a valid submission. Duplicate addresses and resend requests receive a generic response that does not disclose whether an account exists.                |
+| EMAIL-1   | `/auth/confirm`                      | A GET displays an explicit continue action. Submitting it verifies a Supabase token hash for the expected `email` or `recovery` purpose. Signup verification establishes a session and redirects to `/`. Recovery verification establishes the session and redirects to `/reset-password`.                    |
+| EMAIL-2   | Invalid email link                   | Reject missing, invalid, expired, already used, and wrong-purpose tokens. Offer the matching resend or restart action and do not establish a new session.                                                                                                                                                     |
+| RESET-1   | `/forgot-password`                   | Accept a valid email address and request a recovery email from Supabase. Registered and unregistered addresses receive the same public confirmation.                                                                                                                                                          |
+| RESET-2   | `/reset-password` and submit action  | Verify short-lived recovery authorization for the current Supabase account and session before showing the form or changing a password. Require a matching confirmation and enforce the configured password rules. On completion, clear recovery state and the current browser session and return to `/login`. |
+| RESET-3   | Invalid recovery state               | Direct visits, ordinary signed-in sessions, and expired or mismatched recovery authorization cannot change a password. Offer a fresh recovery link. After a successful reset, the previous password fails and the new one signs in.                                                                           |
+| GOOGLE-1  | Google action and `/auth/callback`   | Start Google's sign-in through Supabase PKCE. Exchange a valid code using the original verifier. Successful sign-in creates the same dashboard cookie session as password login.                                                                                                                              |
+| GOOGLE-2  | OAuth failure and return destination | Cancellation, invalid or replayed codes, and missing verifiers return to `/login` with a retry message. Only validated dashboard paths may be used as app return destinations.                                                                                                                                |
+
+The email flow uses Supabase's token hash verification. OAuth uses Supabase's authorization code exchange. [Supabase password-based auth](https://supabase.com/docs/guides/auth/passwords) · [PKCE flow](https://supabase.com/docs/guides/auth/sessions/pkce-flow)
+
+## Authorization
+
+| ID       | Actor                                   | Dashboard and API outcome                                                                                                                             |
+| -------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ACCESS-1 | Guest or invalid session                | Protected pages go to login. The sites API returns `401` for unauthenticated requests that pass the request origin check.                             |
+| ACCESS-2 | Signed-in user without assignments      | Show an awaiting-access state. The sites list returns `200` with an empty array. Direct access to an unassigned site returns `404`.                   |
+| ACCESS-3 | Viewer                                  | Read assigned sites and their version history. Changing an assigned site returns `403`.                                                               |
+| ACCESS-4 | Editor                                  | Read, save, publish, and restore assigned sites. Accessing another site's data returns `404`.                                                         |
+| ACCESS-5 | Admin                                   | Retain access to all sites. The existing admin workflow controls role assignments.                                                                    |
+| ACCESS-6 | Cookie-authenticated cross-origin write | The site API rejects the write with `403`. Valid same-origin cookie sessions and valid Bearer tokens continue to use the same site permission checks. |
+
+Email verification, first Google sign-in, and password recovery preserve existing role assignments. New accounts have no role until an admin assigns one. Server-side checks and the existing Supabase policies enforce these rules even when a caller bypasses the dashboard UI.
+
+## Security and user-visible guarantees
+
+- **Return destinations.** Resolve auth callbacks against the configured dashboard origin. Validate any user-supplied return path before redirecting. Email verification and recovery each use a fixed success destination.
+- **Email link handling.** A prefetch or link preview leaves the token usable. Successful verification consumes the original link. Keep token hashes and OAuth codes out of analytics, application logs, and the final page URL.
+- **Recovery authorization.** Derive proof from successful verification for the recovery purpose, bind it to the verified Supabase session and user, and validate it again on password submission. Expire it and clear it after completion or sign-out.
+- **Public forms.** Validate on the server and present errors and pending states in the dashboard's existing language. Apply configured Supabase rate limits and keep email responses generic where account existence would otherwise be disclosed.
+- **Session data.** Use the existing Supabase server-side session client. Keep redirect responses that establish or clear sessions private and uncached. Keep Supabase secret keys server-side and Google credentials in Supabase. [Supabase server-side auth](https://supabase.com/docs/guides/auth/server-side) · [Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits)
