@@ -82,7 +82,6 @@ export function HomeOverview({ site, sites, landingUrl }: { site: Site; sites: S
         <Segmented options={periods} value={period} onValueChange={setPeriod} aria-label="Kỳ thống kê" />
       </div>
       <MetricCards views={rows ? views : null} clicks={rows ? clicks : null} count={products.length} />
-      <SiteGallery sites={sites} active={site} landingUrl={landingUrl} />
       <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,1fr)]">
         <Card className="gap-4 border p-5 shadow-none sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -192,6 +191,7 @@ export function HomeOverview({ site, sites, landingUrl }: { site: Site; sites: S
           )}
         </Card>
       </div>
+      <SiteGallery sites={sites} active={site} landingUrl={landingUrl} />
     </div>
   );
 }

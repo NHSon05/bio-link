@@ -69,7 +69,7 @@ The runner starts a temporary Supabase stack (sign-ups, email confirmation, Mail
 
 ## API
 
-Endpoints, permissions, and status codes are defined in [docs/API_CONTRACT.md](docs/API_CONTRACT.md). Implemented today: `GET /api/sites`, `GET|PATCH|POST|PUT /api/sites/{slug}`, `GET|POST /api/sites/{slug}/versions`. Authenticate with the dashboard session cookie (same-origin writes only) or `Authorization: Bearer <supabase-access-token>`.
+Endpoints, permissions, and status codes are defined in [docs/API_CONTRACT.md](docs/API_CONTRACT.md). Implemented today: `GET /api/me`, `GET|POST /api/sites`, `GET|PATCH|POST|PUT|DELETE /api/sites/{slug}`, `GET|POST /api/sites/{slug}/versions`, `POST /api/sites/{slug}/rename`, `GET|PUT /api/sites/{slug}/members`, `DELETE /api/sites/{slug}/members/{userId}`, `POST /api/sites/{slug}/media`. Media uploads need Supabase Storage (enabled in `supabase/config.toml`); the `media` bucket is created by migration. Authenticate with the dashboard session cookie (same-origin writes only) or `Authorization: Bearer <supabase-access-token>`.
 
 ## Design system
 

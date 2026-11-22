@@ -2,7 +2,7 @@
 
 A snapshot of where Bio Link stands. Update it at the end of every finished task (see [Keeping this file current](#keeping-this-file-current)). The architecture is defined in [ARCHITECTURE.md](ARCHITECTURE.md), the work breakdown in [plan.md](plan.md), and API behavior in [API_CONTRACT.md](API_CONTRACT.md).
 
-**Last updated:** 2026-11-20 · **Branch:** `main` · **Latest commit:** `400fe9b`
+**Last updated:** 2026-11-22 · **Branch:** `main` · **Latest commit:** `400fe9b`
 
 ## What it is
 
@@ -114,9 +114,9 @@ bio-link/
 | --- | ----------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | F0  | Monorepo, schema, templates, runtime      | Done          | `sitemap.xml` (F0-7) still open                                                                                                                                   |
 | F1  | Dashboard auth                            | In progress   | Auth phases 0–3 done (login, public routes, registration); phase 4 (email confirmation) started — `email-confirm.spec.ts` added, `/auth/confirm` is a placeholder |
-| F2  | Editor: draft, publish, versions, preview | Mostly done   | Missing: contract tests, `ME-1`, author emails in history                                                                                                         |
-| F3  | Site and access management                | Not started   |                                                                                                                                                                   |
-| F4  | Media uploads                             | Not started   |                                                                                                                                                                   |
+| F2  | Editor: draft, publish, versions, preview | Mostly done   | Contract tests and `ME-1` done; missing author emails in history (F2-10) and the `SITE-5` decision (F2-11)                                                        |
+| F3  | Site and access management                | Done          | Admin tab: create, rename (with redirect page), delete, members. Build side effects wait for F5                                                                   |
+| F4  | Media uploads                             | Mostly done   | Upload → WebP in the `media` bucket; avatar and cover fields. Block thumbnails have no field yet                                                                  |
 | F5  | Build and deploy pipeline                 | Not started   | Local builds work; no CI or AWS deploy                                                                                                                            |
 | F6  | Products and affiliate links              | Per-site CRUD | Site drafts and published configs hold the catalog. Legacy shop blocks use `packages/templates/products.json`.                                                    |
 | F7  | Click tracking and analytics              | Daily totals  | The public runtime records views and tracked clicks. Home shows daily totals and click rate for the selected site.                                                |
@@ -126,30 +126,31 @@ bio-link/
 
 ## API status
 
-| Contract IDs                                                                                                    | Status                                         |
-| --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `SITE-1`…`SITE-5`, `VER-1`, `VER-2`, `PREV-1`                                                                   | Implemented, not yet covered by contract tests |
-| `PUB-1`, `PUB-2`                                                                                                | Built by Astro; CDN headers Planned            |
-| All other IDs (`ME`, `ADMIN`, `MEM`, `MEDIA`, `BUILD`, `PUB-3/4`, `PROD`, `COLL`, `EVT`, `ANA`, `SUB`, `SCORE`) | Proposed                                       |
+| Contract IDs                                                                                    | Status                                                |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `SITE-1`…`SITE-5`, `VER-1`, `VER-2`, `ME-1`, `ADMIN-1`…`ADMIN-3`, `MEM-1`…`MEM-3`, `MEDIA-1`    | Implemented, covered by `tests/auth/site-api.spec.ts` |
+| `PREV-1`, `PUB-4` (static redirect page)                                                        | Implemented                                           |
+| `PUB-1`, `PUB-2`                                                                                | Built by Astro; CDN headers Planned                   |
+| All other IDs (`BUILD`, `PUB-3`, `PUB-4` CDN 301, `PROD`, `COLL`, `EVT`, `ANA`, `SUB`, `SCORE`) | Proposed                                              |
 
 ## Database
 
-One migration, `20261120030000_site_backend.sql`: `sites`, `site_admins`, `site_members`, `site_versions`, and the `save_site` RPC. `seed.sql` loads four sample sites.
+Three migrations: `20261120030000_site_backend.sql` (`sites`, `site_admins`, `site_members`, `site_versions`, `save_site`), `20261120110000_site_traffic.sql` (daily traffic), and `20261122000000_site_admin.sql` (`slug_redirects`, admin and member RPCs, the `media` storage bucket). Storage is enabled in `config.toml`. `seed.sql` loads four sample sites.
 
 ## Tests and checks
 
-| Check                            | Command             | Last known result                                                                           |
-| -------------------------------- | ------------------- | ------------------------------------------------------------------------------------------- |
-| Auth suite (20 tests in 4 specs) | `pnpm test:auth`    | 17 passing at the end of phase 3 (`docs/auth/AUTH_TASK.md`); phase 4 tests not yet recorded |
-| Lint                             | `pnpm lint`         | Not recorded                                                                                |
-| Format                           | `pnpm format:check` | Docs pass                                                                                   |
-| Build                            | `pnpm build`        | Not recorded                                                                                |
+| Check              | Command             | Last known result                                                                           |
+| ------------------ | ------------------- | ------------------------------------------------------------------------------------------- |
+| Auth and API suite | `pnpm test:auth`    | 2026-11-22: 56 passed, 1 skipped (mock-only spec; passes with `WORKSPACE_DATA_SOURCE=mock`) |
+| Lint               | `pnpm lint`         | 2026-11-22: clean                                                                           |
+| Format             | `pnpm format:check` | Docs pass                                                                                   |
+| Build              | `pnpm build`        | Not recorded                                                                                |
 
 ## Next steps
 
 1. Finish F1 auth phases 4–11 (`docs/auth/AUTH_TASK.md`).
-2. F2-8: contract tests for the implemented site and version endpoints.
-3. F3 and F4 in parallel (admin site management, media uploads).
+2. F4-4 block thumbnails, F2-10 author emails, F2-11 `SITE-5` decision.
+3. Apply `20261122000000_site_admin.sql` to the hosted project and enable Storage there (needs approval).
 4. F5: build hook, CI job, S3/CloudFront deploy — needs AWS access and a dashboard host decision.
 
 ## Open questions
@@ -164,6 +165,8 @@ One migration, `20261120030000_site_backend.sql`: `sites`, `site_admins`, `site_
 ## Change log
 
 Newest first. One line per finished task: date, task IDs, what changed, how it was verified.
+
+- 2026-11-22 — F2-8, F2-9, F3-1…F3-7, F4-1…F4-3, F4-5 (F4-4 partly): `GET /api/me`, admin site and member APIs with `slug_redirects`, static redirect pages in the landing build, `media` uploads converted to WebP, admin tab and avatar/cover upload in the editor; malformed JSON now returns `400` per contract. Verified with `pnpm test:auth` (56 passed, 1 skipped), mock spec, `pnpm lint`, and code-reviewer approval.
 
 - 2026-11-20 — Docs: compacted README (about half the length; details now link to docs). Verified with `pnpm format:check`.
 - 2026-11-20 — Docs: README and this summary updated for auth phase 3 (registration done, local sign-ups still off, four auth specs, `pnpm dev:landing`). Verified with `pnpm format:check`.

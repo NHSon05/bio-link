@@ -10,6 +10,8 @@ const suffix = randomUUID();
 const password = `P4ssword-${randomUUID()}`;
 const assigned = SiteSchema.parse({ slug: `alpha-${suffix}`, profile: { title: "Trang Alpha" } });
 const other = SiteSchema.parse({ slug: `beta-${suffix}`, profile: { title: "Trang Beta" } });
+const created = `gamma-${suffix}`;
+const renamed = `delta-${suffix}`;
 const users = new Map<string, { id: string; email: string }>();
 const path = (site: Site) => `/api/sites/${site.slug}`;
 const history = (site: Site) => `${path(site)}/versions`;
@@ -59,9 +61,11 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  testSql("delete from public.sites where slug in (:'assigned', :'other');", {
+  testSql("delete from public.sites where slug in (:'assigned', :'other', :'created', :'renamed');", {
     assigned: assigned.slug,
     other: other.slug,
+    created,
+    renamed,
   });
   const { data, error } = await admin.auth.admin.listUsers();
   if (error) throw error;
@@ -267,4 +271,35 @@ test("ACCESS-6 cookie writes require the exact origin while valid bearer writes 
   } finally {
     await alternate.close();
   }
+});
+
+test("ADMIN-1 ADMIN-2 the admin tab keeps unsaved edits on other sites and follows a rename", async ({ page }) => {
+  await signIn(page, "admin", "password");
+  await page.goto(`/?tab=bio&slug=${assigned.slug}`);
+  const title = page.getByRole("textbox", { name: "Tên", exact: true });
+  await title.fill("Chưa lưu của admin");
+  const picker = page.getByRole("combobox", { name: "Chọn slug" });
+
+  await page.getByRole("link", { name: "Quản trị", exact: true }).click();
+  await expect(page.getByText(`/${assigned.slug} có thay đổi chưa lưu`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Đổi slug", exact: true })).toBeDisabled();
+  await page.getByLabel("Slug", { exact: true }).fill(created);
+  await page.getByRole("button", { name: "Tạo trang", exact: true }).click();
+  await expect(picker).toContainText(`/${created}`);
+
+  // Creating another site must not drop the unsaved draft of this one.
+  await picker.click();
+  await page.getByRole("option", { name: `Trang Alpha · /${assigned.slug}` }).click();
+  await page.getByRole("link", { name: "Link in bio", exact: true }).click();
+  await expect(title).toHaveValue("Chưa lưu của admin");
+
+  await picker.click();
+  await page.getByRole("option", { name: `${created} · /${created}` }).click();
+  await page.getByRole("link", { name: "Quản trị", exact: true }).click();
+  await page.getByLabel("Slug mới", { exact: true }).fill(renamed);
+  await page.getByRole("button", { name: "Đổi slug", exact: true }).click();
+  await expect(picker).toContainText(`/${renamed}`);
+  await picker.click();
+  await expect(page.getByRole("option", { name: `${created} · /${renamed}` })).toBeVisible();
+  await expect(page.getByRole("option", { name: new RegExp(`/${created}$`) })).toHaveCount(0);
 });

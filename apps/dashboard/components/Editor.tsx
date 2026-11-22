@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, KeyRound, Undo2 } from "lucide-react";
 import type { Site } from "@bio-link/schema";
-import { useWorkspaceApi, type SiteSummary } from "@/lib/workspace-api";
+import { useWorkspaceApi, type Me, type SiteSummary } from "@/lib/workspace-api";
 import { Panel, StatusPill } from "@/components/panel";
 import { Button } from "@/components/ui/button";
+import { AdminPanel } from "@/components/workspace/admin";
 import { Design } from "@/components/workspace/design";
 import { HomeOverview, MetricCards } from "@/components/workspace/home";
 import { sections, WorkspaceShell, workspaceUrl } from "@/components/workspace/navigation";
@@ -21,11 +22,13 @@ type Notice = { kind: "saving" | "saved" | "error"; msg: string };
 export default function Editor({ email, landingUrl }: { email: string; landingUrl: string }) {
   const api = useWorkspaceApi();
   const params = useSearchParams();
-  const view = sections.find((s) => s.id === params.get("tab"))?.id ?? "home";
+  const [me, setMe] = useState<Me | null>(null);
+  const view = sections.find((s) => s.id === params.get("tab") && (s.id !== "admin" || me?.isAdmin))?.id ?? "home";
   const [sites, setSites] = useState<SiteSummary[] | null>(null);
   const [states, setStates] = useState<Record<string, SiteState>>({});
   const [notices, setNotices] = useState<Record<string, Notice | undefined>>({});
   const [listError, setListError] = useState("");
+  const [listVersion, setListVersion] = useState(0);
   const [siteError, setSiteError] = useState<{ slug: string; message: string } | null>(null);
   const current = sites?.find((s) => s.slug === params.get("slug")) ?? sites?.[0];
   const slug = current?.slug ?? "";
@@ -45,6 +48,15 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
       .catch((e: Error) => {
         if (!ctl.signal.aborted) setListError(e.message);
       });
+    return () => ctl.abort();
+  }, [api, listVersion]);
+  useEffect(() => {
+    const ctl = new AbortController();
+    // Chỉ để ẩn/hiện chức năng quản trị; server vẫn kiểm tra quyền ở mọi API.
+    api
+      .me(ctl.signal)
+      .then(setMe)
+      .catch(() => {});
     return () => ctl.abort();
   }, [api]);
   useEffect(() => {
@@ -116,6 +128,7 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
     slug: "Thiết kế theo slug",
     website: "Website",
     products: "Sản phẩm affiliate",
+    admin: "Quản trị",
   }[view];
   if (api.sample && view === "website" && params.get("display") === "page" && draft) {
     return <SitePreview key={slug} site={draft} landingUrl={landingUrl} published fullPage />;
@@ -123,6 +136,7 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
   return (
     <WorkspaceShell
       email={email}
+      isAdmin={!!me?.isAdmin}
       sites={sites ?? []}
       slug={slug}
       view={view}
@@ -135,6 +149,23 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
     >
       {error ? (
         <p role="alert">{error}</p>
+      ) : view === "admin" && sites ? (
+        <AdminPanel
+          site={current}
+          dirty={dirty}
+          changed={(next, previous) => {
+            // Slug có thể được dùng lại (xóa rồi tạo, đổi tên qua lại): chỉ bỏ bản nháp đã tải của slug bị ảnh hưởng.
+            const drop = <T,>(prev: Record<string, T>) => {
+              const rest = { ...prev };
+              for (const key of [next, previous]) if (key) delete rest[key];
+              return rest;
+            };
+            setStates(drop);
+            setNotices(drop);
+            window.history.pushState(null, "", workspaceUrl("admin", next));
+            setListVersion((v) => v + 1);
+          }}
+        />
       ) : sites?.length === 0 ? (
         <div className="grid gap-5">
           <h1 className="workspace-title">{heading}</h1>

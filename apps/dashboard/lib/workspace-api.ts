@@ -14,13 +14,32 @@ export type SiteSummary = {
   publishedSlug: string | null;
 };
 
+export type Me = { userId: string; email: string | null; isAdmin: boolean };
+export type Role = "editor" | "viewer";
+export type Member = { userId: string; email: string; role: Role };
+export type NewSite = { slug: string; template: string; title?: string; platform?: string };
+
 export type WorkspaceApi = {
   sample: boolean;
   list(signal: AbortSignal): Promise<SiteSummary[]>;
   read(slug: string, published: boolean, signal: AbortSignal): Promise<Site>;
   save(site: Site, publish: boolean): Promise<Site>;
   traffic(slug: string, signal: AbortSignal): Promise<TrafficDay[]>;
+  me(signal: AbortSignal): Promise<Me>;
+  upload(slug: string, file: File): Promise<{ url: string }>;
+  createSite(site: NewSite): Promise<Site>;
+  renameSite(slug: string, newSlug: string): Promise<unknown>;
+  deleteSite(slug: string): Promise<unknown>;
+  members(slug: string, signal: AbortSignal): Promise<Member[]>;
+  setMember(slug: string, email: string, role: Role): Promise<Member>;
+  removeMember(slug: string, userId: string): Promise<unknown>;
 };
+
+const json = (method: string, body: unknown) => ({
+  method,
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(body),
+});
 
 const liveApi: WorkspaceApi = {
   sample: false,
@@ -34,6 +53,19 @@ const liveApi: WorkspaceApi = {
       body: JSON.stringify(site),
     }),
   traffic: (slug, signal) => siteRequest("/api/sites/" + slug + "/traffic", { signal }),
+  me: (signal) => siteRequest("/api/me", { signal }),
+  upload(slug, file) {
+    const body = new FormData();
+    body.set("file", file);
+    return siteRequest("/api/sites/" + slug + "/media", { method: "POST", body });
+  },
+  createSite: (site) => siteRequest("/api/sites", json("POST", site)),
+  renameSite: (slug, newSlug) => siteRequest("/api/sites/" + slug + "/rename", json("POST", { newSlug })),
+  deleteSite: (slug) => siteRequest("/api/sites/" + slug, json("DELETE", { confirm: slug })),
+  members: (slug, signal) => siteRequest("/api/sites/" + slug + "/members", { signal }),
+  setMember: (slug, email, role) => siteRequest("/api/sites/" + slug + "/members", json("PUT", { email, role })),
+  removeMember: (slug, userId) =>
+    siteRequest("/api/sites/" + slug + "/members/" + encodeURIComponent(userId), { method: "DELETE" }),
 };
 
 export const WorkspaceApiContext = createContext(liveApi);

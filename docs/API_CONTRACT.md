@@ -70,7 +70,7 @@ type BuildStatus = "queued" | "running" | "succeeded" | "failed";
 
 ## Current user
 
-### ME-1 — `GET /api/me` · Proposed
+### ME-1 — `GET /api/me` · Implemented
 
 Returns who is signed in so the dashboard can hide actions the user cannot perform. The server still enforces every permission.
 
@@ -145,14 +145,14 @@ Restores an old version by publishing its config as a **new** version. History i
 Renders a site with the production templates. Not deployed to the CDN.
 
 - `GET /preview?slug={slug}` → `200` HTML of the published config. Falls back to the first published site when the slug is unknown. `404` when nothing is published.
-- `POST /preview` with body `Site` → `200` HTML of the draft. `422` HTML error page when the body is invalid.
+- `POST /preview` with body `Site` (`application/json`), or a form POST (`application/x-www-form-urlencoded` or `multipart/form-data`) whose `site` field is the `Site` JSON → `200` HTML of the draft. `422` HTML error page when the body is invalid. The dashboard uses the form POST as the preview iframe's navigation, so the page and its assets load from the landing origin.
 - `OPTIONS /preview` from `DASHBOARD_ORIGIN` → `204` with CORS headers for `POST` and `Content-Type`. Any other origin → `403`.
 - A `POST` from an origin other than `DASHBOARD_ORIGIN` or the preview server itself → `403`.
 - Every response sends `Cache-Control: no-store`. Click and subscribe events are not sent from preview pages.
 
 ## Site administration (admin)
 
-### ADMIN-1 — `POST /api/sites` · Proposed
+### ADMIN-1 — `POST /api/sites` · Implemented
 
 Creates a site with an empty draft. Nothing is published until `SITE-4`.
 
@@ -160,32 +160,32 @@ Creates a site with an empty draft. Nothing is published until `SITE-4`.
 - `201` `Site` (the new draft). The draft uses the template's default theme, regions, and an empty `blocks` list.
 - `403` non-admin. `409` slug already used by a site or by a redirect in `slug_redirects`. `422` invalid slug, reserved slug, or unknown template.
 
-### ADMIN-2 — `POST /api/sites/{slug}/rename` · Proposed
+### ADMIN-2 — `POST /api/sites/{slug}/rename` · Implemented
 
 Changes the slug and keeps the old URL working.
 
 - Body: `{ "newSlug": string }`
 - `200` `{ "slug": "new-slug", "redirectFrom": "old-slug" }`. Updates `slug` in the row, the draft, and the published config, and inserts a row in `slug_redirects`. Members and versions stay attached to the site.
-- Side effect: queues a build that emits `/{newSlug}` and a redirect from `/{oldSlug}` (`PUB-4`).
+- Side effect (Proposed, F5): queues a build that emits `/{newSlug}` and a redirect from `/{oldSlug}` (`PUB-4`).
 - `403` non-admin. `404` unknown slug. `409` `newSlug` taken. `422` invalid or reserved slug, or `newSlug` equals the current slug.
 
-### ADMIN-3 — `DELETE /api/sites/{slug}` · Proposed
+### ADMIN-3 — `DELETE /api/sites/{slug}` · Implemented
 
 Deletes a site, its members, versions, and scores.
 
 - Body: `{ "confirm": string }`, which must equal `{slug}`.
 - `204`
-- Side effect: queues a build that removes `/{slug}` and `/{slug}.json` from the CDN.
+- Side effect (Proposed, F5): queues a build that removes `/{slug}` and `/{slug}.json` from the CDN.
 - `403` non-admin. `404` unknown slug. `422` missing or wrong `confirm`.
 
 ## Members (admin)
 
-### MEM-1 — `GET /api/sites/{slug}/members` · Proposed
+### MEM-1 — `GET /api/sites/{slug}/members` · Implemented
 
 - `200` `{ "userId": string, "email": string, "role": Role }[]`, ordered by email.
 - `403` non-admin. `404` unknown slug.
 
-### MEM-2 — `PUT /api/sites/{slug}/members` · Proposed
+### MEM-2 — `PUT /api/sites/{slug}/members` · Implemented
 
 Adds a member or changes their role. Idempotent.
 
@@ -193,14 +193,14 @@ Adds a member or changes their role. Idempotent.
 - `200` `{ "userId": string, "email": string, "role": Role }`
 - `403` non-admin. `404` unknown slug or no account with that email. `422` invalid email or role.
 
-### MEM-3 — `DELETE /api/sites/{slug}/members/{userId}` · Proposed
+### MEM-3 — `DELETE /api/sites/{slug}/members/{userId}` · Implemented
 
 - `204`, also when the user was not a member.
 - `403` non-admin. `404` unknown slug.
 
 ## Media
 
-### MEDIA-1 — `POST /api/sites/{slug}/media` · Proposed
+### MEDIA-1 — `POST /api/sites/{slug}/media` · Implemented
 
 Uploads an image for use in the site's config.
 
@@ -286,7 +286,7 @@ Ranking data for the runtime. Contains block ids only; the runtime reorders bloc
 
 Lists `/{slug}` for every published site, with `<lastmod>` from `updatedAt`. Excludes `/preview` and redirected slugs.
 
-### PUB-4 — `GET /{oldSlug}` after a rename · Proposed
+### PUB-4 — `GET /{oldSlug}` after a rename · Implemented (static page), Proposed (CDN 301)
 
 Returns a `301` to `/{newSlug}` (CloudFront function or S3 redirect rule), keeping the query string so UTM parameters survive. If the CDN cannot return a real redirect, serve a static page with `<meta http-equiv="refresh">` and a canonical link.
 

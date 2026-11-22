@@ -1,13 +1,36 @@
 ---
 /** 1 trang static cho mỗi slug → /{slug}/index.html trên S3 + CloudFront. */
+import type { Site } from "@bio-link/schema";
 import SitePage from "../layouts/SitePage.astro";
-import { loadBuildSites } from "../lib/data";
+import { loadBuildSites, loadRedirects } from "../lib/data";
 
 export async function getStaticPaths() {
-  const sites = await loadBuildSites();
-  return sites.map((site) => ({ params: { slug: site.slug }, props: { site } }));
+  const [sites, redirects] = await Promise.all([loadBuildSites(), loadRedirects()]);
+  return [
+    ...sites.map((site) => ({ params: { slug: site.slug }, props: { site } })),
+    ...redirects.map(({ from, to }) => ({ params: { slug: from }, props: { redirectTo: to } })),
+  ];
 }
-const { site } = Astro.props;
+const { site, redirectTo } = Astro.props as { site?: Site; redirectTo?: string };
+const target = redirectTo && `/${redirectTo}/`;
 ---
 
-<SitePage site={site} />
+{site ? (
+  <SitePage site={site} />
+) : (
+  <html lang="vi">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="robots" content="noindex" />
+      <link rel="canonical" href={target} />
+      <meta http-equiv="refresh" content={`0; url=${target}`} />
+      {/* Giữ query string để UTM không mất khi CDN chưa trả được 301. */}
+      <script is:inline define:vars={{ target }}>
+        location.replace(target + location.search + location.hash);
+      </script>
+    </head>
+    <body>
+      <a href={target}>{target}</a>
+    </body>
+  </html>
+)}

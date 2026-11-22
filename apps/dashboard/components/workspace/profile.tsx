@@ -3,6 +3,7 @@ import { Panel } from "@/components/panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageField } from "./image-field";
 import type { UpdateDraft } from "./products";
 
 export function Profile({ draft, update }: { draft: Site; update: UpdateDraft }) {
@@ -33,6 +34,28 @@ export function Profile({ draft, update }: { draft: Site; update: UpdateDraft })
             }
           />
         </div>
+        <ImageField
+          id="profile-avatar"
+          label="Ảnh đại diện"
+          slug={draft.slug}
+          value={draft.profile.avatar ?? ""}
+          onChange={(url) =>
+            update((d) => {
+              d.profile.avatar = url || undefined;
+            })
+          }
+        />
+        <ImageField
+          id="profile-cover"
+          label="Ảnh bìa"
+          slug={draft.slug}
+          value={draft.profile.cover ?? ""}
+          onChange={(url) =>
+            update((d) => {
+              d.profile.cover = url || undefined;
+            })
+          }
+        />
         <div className="col-span-2 grid gap-1.5">
           <Label htmlFor="profile-about">Giới thiệu (chỉ hiện trên desktop)</Label>
           <Textarea

@@ -10,6 +10,8 @@ export default defineConfig({
   adapter: node({ mode: "standalone" }),
   server: { port: 4321 },
   build: { format: "directory" },
+  // Dashboard gửi form POST cross-site tới /preview; preview.astro tự kiểm tra Origin nên tắt kiểm tra mặc định của Astro.
+  security: { checkOrigin: false },
   env: {
     schema: {
       SUPABASE_URL: envField.string({ context: "server", access: "secret", optional: true }),

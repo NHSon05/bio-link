@@ -35,6 +35,7 @@ Email verification, first Google sign-in, and password recovery preserve existin
 
 ## Security and user-visible guarantees
 
+- **DevTools discovery.** `/.well-known/appspecific/com.chrome.devtools.json` bypasses the session proxy and never redirects to login. Other dashboard and API routes retain their existing authentication checks.
 - **Return destinations.** Resolve auth callbacks against the configured dashboard origin. Validate any user-supplied return path before redirecting. Email verification and recovery each use a fixed success destination.
 - **Email link handling.** A prefetch or link preview leaves the token usable. Successful verification consumes the original link. Keep token hashes and OAuth codes out of analytics, application logs, and the final page URL.
 - **Recovery authorization.** Derive proof from successful verification for the recovery purpose, bind it to the verified Supabase session and user, and validate it again on password submission. Expire it and clear it after completion or sign-out.

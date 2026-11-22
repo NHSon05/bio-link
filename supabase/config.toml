@@ -35,7 +35,8 @@ content_path = "./supabase/templates/confirmation.html"
 enabled = false
 
 [storage]
-enabled = false
+enabled = true
+file_size_limit = "5MiB"
 
 [edge_runtime]
 enabled = false
