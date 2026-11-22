@@ -7,6 +7,9 @@ import { latestMailLink } from "./mailpit";
 const supabase = createClient(process.env.AUTH_TEST_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
+const emailAuth = createClient(process.env.AUTH_TEST_SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+  auth: { flowType: "pkce", autoRefreshToken: false, persistSession: false },
+});
 const emailPrefix = `confirm-${randomUUID()}-`;
 const password = `P4ssword-${randomUUID()}`;
 const confirmPath = "/auth/confirm";
@@ -15,6 +18,7 @@ const continueLabel = "Xác nhận email";
 const resendLabel = "Gửi lại email xác nhận";
 const invalidMessage = "Liên kết xác nhận không hợp lệ hoặc đã hết hạn.";
 const resendMessage = "Nếu địa chỉ này cần xác nhận, bạn sẽ nhận được email xác nhận.";
+const unknownToken = `pkce_${"a".repeat(56)}`;
 
 test.afterAll(async () => {
   const { data, error } = await supabase.auth.admin.listUsers();
@@ -102,22 +106,45 @@ test("EMAIL-1 EMAIL-2 LOGIN-1 a preview leaves the real signup link usable once"
   await expectInvalidLink(page);
 });
 
-test("EMAIL-2 rejects missing, malformed, and unsupported confirmation parameters", async ({ page }) => {
-  for (const path of [confirmPath, tokenPath("bad hash"), tokenPath("a".repeat(56), "recovery")]) {
+test("EMAIL-2 rejects malformed parameters and unknown confirmation tokens", async ({ page }) => {
+  for (const path of [confirmPath, tokenPath("bad hash"), tokenPath(unknownToken, "recovery")]) {
     await page.goto(path);
     await expectInvalidLink(page);
     await expect(page.getByRole("button", { name: continueLabel, exact: true })).toHaveCount(0);
   }
+
+  await page.goto(tokenPath(unknownToken));
+  await submitConfirmation(page);
+  await expect(page).toHaveURL(confirmPath);
+  await expectInvalidLink(page);
 });
 
-test("EMAIL-2 rejects an actual recovery token presented as a signup token", async ({ page }) => {
+test("EMAIL-2 rejects an actual recovery token presented as a signup token", async ({ page, request }) => {
   const email = `${emailPrefix}recovery@example.com`;
   const { error: createError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
   if (createError) throw createError;
-  const { data, error } = await supabase.auth.admin.generateLink({ type: "recovery", email });
+  const { error } = await emailAuth.auth.resetPasswordForEmail(email);
   if (error) throw error;
+  const link = await latestMailLink(request, email);
+  const recoveryToken = link.searchParams.get("token");
+  expect(recoveryToken?.startsWith("pkce_")).toBe(true);
 
-  await page.goto(tokenPath(data.properties.hashed_token));
+  await page.goto(tokenPath(recoveryToken!));
+  await submitConfirmation(page);
+
+  await expect(page).toHaveURL(confirmPath);
+  await expectInvalidLink(page);
+});
+
+test("EMAIL-2 rejects a Supabase invite hash even if it is presented as a PKCE signup token", async ({ page }) => {
+  const email = `${emailPrefix}invite@example.com`;
+  const { data, error } = await supabase.auth.admin.generateLink({ type: "invite", email });
+  if (error) throw error;
+  const token = data.properties.hashed_token;
+
+  await page.goto(tokenPath(token));
+  await expectInvalidLink(page);
+  await page.goto(tokenPath(`pkce_${token}`));
   await submitConfirmation(page);
 
   await expect(page).toHaveURL(confirmPath);
@@ -130,8 +157,10 @@ test("EMAIL-2 rejects an expired signup hash and SIGNUP-1 can resend a usable li
   baseURL,
 }) => {
   const email = `${emailPrefix}expired@example.com`;
-  const { data, error } = await supabase.auth.admin.generateLink({ type: "signup", email, password });
-  if (error) throw error;
+  const { data, error } = await emailAuth.auth.signUp({ email, password });
+  if (error || !data.user) throw error ?? new Error("Không tạo được tài khoản kiểm thử.");
+  const expiredLink = await latestMailLink(request, email);
+  expect(expiredLink.origin).toBe(baseURL);
   const db = `supabase_db_${process.env.AUTH_TEST_PROJECT_ID}`;
   const aged = spawnSync(
     "docker",
@@ -145,7 +174,7 @@ test("EMAIL-2 rejects an expired signup hash and SIGNUP-1 can resend a usable li
   expect(aged.status, aged.stderr).toBe(0);
   expect(aged.stdout).toContain("UPDATE 1");
 
-  await page.goto(tokenPath(data.properties.hashed_token));
+  await page.goto(expiredLink.href);
   await submitConfirmation(page);
   await expect(page).toHaveURL(confirmPath);
   await expectInvalidLink(page);
@@ -158,7 +187,7 @@ test("EMAIL-2 rejects an expired signup hash and SIGNUP-1 can resend a usable li
   const link = await latestMailLink(request, email);
   expect(link.pathname).toBe(confirmPath);
   expect(link.origin).toBe(baseURL);
-  expect(link.searchParams.get("token_hash") === data.properties.hashed_token).toBe(false);
+  expect(link.searchParams.get("token_hash") === expiredLink.searchParams.get("token_hash")).toBe(false);
   await page.goto(link.href);
   await submitConfirmation(page);
   await expect(page).toHaveURL("/");
@@ -179,9 +208,13 @@ test("SIGNUP-1 resend shows the same response for pending, confirmed, and unknow
     await page.goto(resendPath);
     await expect(page).toHaveURL(resendPath);
     await page.getByLabel("Email", { exact: true }).fill(email);
+    const response = page.waitForResponse(
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === resendPath,
+    );
     await page.getByRole("button", { name: resendLabel, exact: true }).click();
     await expect(page.getByRole("heading", { name: "Kiểm tra email" })).toBeVisible();
     await expect(page.getByText(resendMessage, { exact: true })).toBeVisible();
+    expect(await (await response).headerValues("set-cookie")).toEqual([]);
   }
   expect((await page.request.get("/api/sites")).status()).toBe(401);
 });

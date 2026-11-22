@@ -49,11 +49,13 @@ After each phase, record the verification command and result under its exit chec
 
 ## Phase 4 — Confirm email and resend
 
-- [ ] **Red.** Fetch a real signup link as a preview, then complete verification in the browser. Cover unverified password login, malformed and wrong-purpose tokens, expired or used links, and resending a confirmation. Cover `LOGIN-1`, `SIGNUP-1`, `EMAIL-1`, and `EMAIL-2`.
-- [ ] **Green.** Configure the signup email template, render the confirmation action, and verify the token hash only when the user submits it. Establish the session and add the resend flow.
-- [ ] **Refactor.** Share generic email response states with the upcoming recovery request form.
+- [x] **Red.** Fetch a real signup link as a preview, then complete verification in the browser. Cover unverified password login, malformed and wrong-purpose tokens, expired or used links, and resending a confirmation. Cover `LOGIN-1`, `SIGNUP-1`, `EMAIL-1`, and `EMAIL-2`.
+- [x] **Green.** Configure the signup email template, render the confirmation action, and verify the token hash only when the user submits it. Establish the session and add the resend flow.
+- [x] **Refactor.** Share generic email response states with the upcoming recovery request form.
 
 **Exit check.** A link preview leaves the link usable. Verification creates a session and the same link cannot be used twice.
+
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth email-confirm.spec.ts` failed all five initial tests while the email pointed directly to Supabase and the dashboard confirmation and resend controls were absent. The focused tests passed after implementation. The full `pnpm test:auth` run with the same environment built the dashboard and passed all 23 tests. It confirmed that a Mailpit link preview leaves the account unverified, submitting the link creates a session, replay fails in a signed-out browser, and resend delivers a fresh link with the same public response and cookie behavior for pending, confirmed, and unknown addresses. `pnpm lint` and `pnpm format:check` passed.
 
 ## Phase 5 — Request a recovery email
 
@@ -81,27 +83,33 @@ After each phase, record the verification command and result under its exit chec
 
 ## Phase 8 — Google OAuth initiation
 
-- [ ] **Baseline and red.** Use a simulated provider to assert the Google request includes a PKCE challenge and sends Supabase the exact configured dashboard callback. Cover an unavailable provider and a rejected external return path under `GOOGLE-1` and `GOOGLE-2`.
-- [ ] **Green.** Fix missing behavior in the existing Google sign-in action, including returning the browser to a recoverable login state if initiation fails.
-- [ ] **Refactor.** Use the shared dashboard origin and safe return-path code.
+- [x] **Baseline and red.** Use a simulated provider to assert the Google request includes a PKCE challenge and sends Supabase the exact configured dashboard callback. Cover an unavailable provider and a rejected external return path under `GOOGLE-1` and `GOOGLE-2`.
+- [x] **Green.** Fix missing behavior in the existing Google sign-in action, including returning the browser to a recoverable login state if initiation fails.
+- [x] **Refactor.** Use the shared dashboard origin and safe return-path code.
 
 **Exit check.** The authorize redirect carries PKCE and the correct callback. An initiation failure presents a retry path.
 
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth --grep 'GOOGLE-[12]'` confirmed the existing S256 challenge and exact callback. The unavailable-provider case failed before the fix because the browser stayed on the Supabase error. The final full suite passed, including the retry and external return-path checks.
+
 ## Phase 9 — Google callback and session
 
-- [ ] **Baseline and red.** Verify a successful code exchange uses the original verifier and sets a session cookie. Cover cancellation, missing or invalid codes, a replayed code, and a missing verifier. Cover `GOOGLE-1` and `GOOGLE-2`.
-- [ ] **Green.** Fix any callback gaps. Redirect successful sign-ins to the validated destination and unsuccessful attempts to login with a retry message.
-- [ ] **Refactor.** Share session and redirect handling with email and password login where it is the same.
+- [x] **Baseline and red.** Verify a successful code exchange uses the original verifier and sets a session cookie. Cover cancellation, missing or invalid codes, a replayed code, and a missing verifier. Cover `GOOGLE-1` and `GOOGLE-2`.
+- [x] **Green.** Fix any callback gaps. Redirect successful sign-ins to the validated destination and unsuccessful attempts to login with a retry message.
+- [x] **Refactor.** Share session and redirect handling with email and password login where it is the same.
 
 **Exit check.** Simulated Google sign-in creates a working dashboard session. Failed or cancelled exchanges do not establish a session. Phases 8–9 can run alongside Phases 3–7 once Phase 2 is complete.
 
+**Verification.** The Google baseline failed the original-verifier check when the SDK's shared verifier cookie was removed. The final full suite used real local Supabase PKCE exchanges with a simulated provider. It verified that the original verifier sets a session cookie and opens the protected API, and that cancelled, missing, invalid, duplicate, and replayed codes and missing verifiers return to a retryable login without a session. Each browser tracks its latest pending Google attempt. Overlapping attempts can require a fresh retry.
+
 ## Phase 10 — Role isolation
 
-- [ ] **Red.** Use browser and API tests for `ACCESS-1` through `ACCESS-6`. Cover awaiting access for both registration and Google, read-only viewer access, editor access to assigned sites, admin access, and rejected cross-origin cookie writes.
-- [ ] **Green.** Show the awaiting-access state and close any permission gaps using the existing role records and Supabase policies.
-- [ ] **Refactor.** Share role fixtures across auth methods. Keep coverage of server responses as well as what the UI displays.
+- [x] **Red.** Use browser and API tests for `ACCESS-1` through `ACCESS-6`. Cover awaiting access for both registration and Google, read-only viewer access, editor access to assigned sites, admin access, and rejected cross-origin cookie writes.
+- [x] **Green.** Show the awaiting-access state and close any permission gaps using the existing role records and Supabase policies.
+- [x] **Refactor.** Share role fixtures across auth methods. Keep coverage of server responses as well as what the UI displays.
 
 **Exit check.** New users receive no site access, and changing the sign-in method does not change role permissions.
+
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth --grep 'GOOGLE-[12]|ACCESS-[1-6]'` exposed the missing awaiting-access heading and a cookie write accepted from a different scheme on the same host. The final `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth` built the dashboard and passed all 40 tests. It verified empty access for new accounts, stable viewer permissions across password and Google sign-in, editor save, publish, and restore, admin access, exact-origin cookie writes on both local hostnames, and valid Bearer writes. `pnpm lint` and `pnpm format:check` passed.
 
 ## Phase 11 — Hosted smoke tests and release checks
 

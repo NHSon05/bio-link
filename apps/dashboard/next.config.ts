@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   reactCompiler: true,
   logging: {
-    incomingRequests: { ignore: [/^\/auth\/confirm(?:[/?]|$)/] },
+    incomingRequests: { ignore: [/^\/auth\/(?:confirm|callback)(?:[/?]|$)/] },
   },
   turbopack: {
     rules: {

@@ -40,6 +40,7 @@ async function submitRegistration(page: Page, email: string, submittedPassword: 
 async function expectCheckEmailState(page: Page) {
   await expect(page.getByRole("heading", { name: "Kiểm tra email" })).toBeFocused();
   await expect(page.getByText(checkEmailMessage)).toBeVisible();
+  expect((await page.context().cookies()).some(({ name }) => name.endsWith("-code-verifier"))).toBe(false);
   expect((await page.request.get("/api/sites")).status()).toBe(401);
 }
 

@@ -5,7 +5,8 @@ import { Suspense } from "react";
 import { AuthCard } from "@/components/AuthCard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { EMAIL_CONFIRM_PATH, EMAIL_VERIFY_PATH, isEmailTokenHash } from "@/lib/emailConfirmation";
+import { EMAIL_CONFIRM_PATH, EMAIL_VERIFY_PATH, isSignupTokenHash } from "@/lib/emailConfirmation";
+import { ConfirmEmailForm } from "./ConfirmEmailForm";
 
 export const metadata: Metadata = { title: "Xác nhận email · bio-link" };
 
@@ -24,15 +25,8 @@ export default function ConfirmEmailPage({ searchParams }: PageProps<"/auth/conf
 
 async function ConfirmationForm({ searchParams }: Pick<PageProps<"/auth/confirm">, "searchParams">) {
   const { token_hash: tokenHash, type } = await searchParams;
-  if (type === "email" && isEmailTokenHash(tokenHash)) {
-    return (
-      <form method="post" action={EMAIL_VERIFY_PATH}>
-        <input type="hidden" name="token_hash" value={tokenHash} />
-        <Button type="submit" size="lg" className="w-full">
-          Xác nhận email
-        </Button>
-      </form>
-    );
+  if (type === "email" && isSignupTokenHash(tokenHash)) {
+    return <ConfirmEmailForm action={EMAIL_VERIFY_PATH} tokenHash={tokenHash} />;
   }
 
   if (tokenHash !== undefined || type !== undefined) redirect(EMAIL_CONFIRM_PATH);

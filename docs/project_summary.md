@@ -86,7 +86,7 @@ bio-link/
 │           │   │                  # Products, Release, Shop, Subscribe, VideoSlider
 │           │   └── hub/SiteHub.astro
 │           ├── lib/               # data.ts (Supabase or fixtures), icons.ts
-│           ├── content/           # Fixtures: sites/*.json (4), products.json
+│           ├── content/           # Fixtures: sites/*.json (4)
 │           └── styles/            # page.css (.lb-*), hub.css
 ├── packages/
 │   ├── schema/                    # @bio-link/schema — Zod site/block/template schema, sortBlocks
@@ -110,19 +110,19 @@ bio-link/
 
 ## Feature status
 
-| ID  | Feature                                   | Status       | Notes                                                                                                                                                             |
-| --- | ----------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F0  | Monorepo, schema, templates, runtime      | Done         | `sitemap.xml` (F0-7) still open                                                                                                                                   |
-| F1  | Dashboard auth                            | In progress  | Auth phases 0–3 done (login, public routes, registration); phase 4 (email confirmation) started — `email-confirm.spec.ts` added, `/auth/confirm` is a placeholder |
-| F2  | Editor: draft, publish, versions, preview | Mostly done  | Missing: contract tests, `ME-1`, author emails in history                                                                                                         |
-| F3  | Site and access management                | Not started  |                                                                                                                                                                   |
-| F4  | Media uploads                             | Not started  |                                                                                                                                                                   |
-| F5  | Build and deploy pipeline                 | Not started  | Local builds work; no CI or AWS deploy                                                                                                                            |
-| F6  | Products and affiliate links              | Fixture only | `apps/landing/src/content/products.json`                                                                                                                          |
-| F7  | Click tracking and analytics              | Client only  | Runtime sends GA4 events and beacons when `PUBLIC_BEACON_URL` is set                                                                                              |
-| F8  | Subscribe endpoint                        | Client only  | Form posts to `PUBLIC_SUBSCRIBE_URL` when set                                                                                                                     |
-| F9  | Viral ranking automation                  | Ranking only | `sortBlocks` and client reordering work; no score ingestion                                                                                                       |
-| F10 | Quality and device testing                | Not started  |                                                                                                                                                                   |
+| ID  | Feature                                   | Status        | Notes                                                                                                                                                             |
+| --- | ----------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F0  | Monorepo, schema, templates, runtime      | Done          | `sitemap.xml` (F0-7) still open                                                                                                                                   |
+| F1  | Dashboard auth                            | In progress   | Auth phases 0–3 done (login, public routes, registration); phase 4 (email confirmation) started — `email-confirm.spec.ts` added, `/auth/confirm` is a placeholder |
+| F2  | Editor: draft, publish, versions, preview | Mostly done   | Missing: contract tests, `ME-1`, author emails in history                                                                                                         |
+| F3  | Site and access management                | Not started   |                                                                                                                                                                   |
+| F4  | Media uploads                             | Not started   |                                                                                                                                                                   |
+| F5  | Build and deploy pipeline                 | Not started   | Local builds work; no CI or AWS deploy                                                                                                                            |
+| F6  | Products and affiliate links              | Per-site CRUD | Site drafts and published configs hold the catalog. Legacy shop blocks use `packages/templates/products.json`.                                                    |
+| F7  | Click tracking and analytics              | Daily totals  | The public runtime records views and tracked clicks. Home shows daily totals and click rate for the selected site.                                                |
+| F8  | Subscribe endpoint                        | Client only   | Form posts to `PUBLIC_SUBSCRIBE_URL` when set                                                                                                                     |
+| F9  | Viral ranking automation                  | Ranking only  | `sortBlocks` and client reordering work; no score ingestion                                                                                                       |
+| F10 | Quality and device testing                | Not started   |                                                                                                                                                                   |
 
 ## API status
 

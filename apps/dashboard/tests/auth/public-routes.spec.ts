@@ -18,7 +18,7 @@ test.describe("SESSION-1 public authentication routes", () => {
   });
 
   test("guests can open the email confirmation entry point", async ({ page }) => {
-    const path = `/auth/confirm?type=email&token_hash=${"a".repeat(56)}`;
+    const path = `/auth/confirm?type=email&token_hash=pkce_${"a".repeat(56)}`;
     await page.goto(path);
 
     await expect(page).toHaveURL(path);

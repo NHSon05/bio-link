@@ -1,8 +1,9 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { connection } from "next/server";
+import { connection, NextResponse } from "next/server";
 
 export function getSupabaseEnv() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,6 +15,12 @@ export function supabaseEnv() {
   const env = getSupabaseEnv();
   if (!env) throw new Error("Missing Supabase URL or publishable key");
   return env;
+}
+
+// Các yêu cầu gửi email không cần ghi mã PKCE hoặc phiên vào cookie.
+export function createEmailRequestClient() {
+  const { url, key } = supabaseEnv();
+  return createClient(url, key, { auth: { flowType: "pkce", persistSession: false, autoRefreshToken: false } });
 }
 
 /** Supabase client bound to the session cookies of the current request. */
@@ -56,10 +63,19 @@ export function safeNext(value: FormDataEntryValue | string | null | undefined) 
 }
 
 export const GOOGLE_CALLBACK_PATH = "/auth/callback";
-export const GOOGLE_NEXT_COOKIE = "bio-link-google-next";
+export const GOOGLE_ATTEMPT_COOKIE = "bio-link-google-attempt";
+
+export const AUTH_LINK_HEADERS = {
+  "Cache-Control": "private, no-store",
+  "Referrer-Policy": "origin",
+};
 
 export function dashboardOrigin() {
   return new URL(process.env.DASHBOARD_URL || "http://localhost:3000").origin;
+}
+
+export function authRedirect(path: string, status: 303 | 307) {
+  return NextResponse.redirect(new URL(safeNext(path), dashboardOrigin()), { status, headers: AUTH_LINK_HEADERS });
 }
 
 export function googleLoginError(next: string) {

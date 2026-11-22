@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import {
   createSessionClient,
   dashboardOrigin,
+  GOOGLE_ATTEMPT_COOKIE,
   GOOGLE_CALLBACK_PATH,
-  GOOGLE_NEXT_COOKIE,
   googleLoginError,
   safeNext,
 } from "@/lib/auth";
@@ -42,6 +42,7 @@ export async function signIn(_: LoginState, form: FormData): Promise<LoginState>
 export async function signInWithGoogle(form: FormData) {
   const next = safeNext(form.get("next"));
   let destination = googleLoginError(next);
+  const store = await cookies();
   try {
     const callback = new URL(GOOGLE_CALLBACK_PATH, dashboardOrigin());
     const supabase = await createSessionClient();
@@ -49,19 +50,34 @@ export async function signInWithGoogle(form: FormData) {
       provider: "google",
       options: { redirectTo: callback.href, skipBrowserRedirect: true },
     });
-    if (!error && data.url) {
-      const store = await cookies();
-      store.set(GOOGLE_NEXT_COOKIE, next, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: callback.protocol === "https:",
-        path: GOOGLE_CALLBACK_PATH,
-        maxAge: 600,
+    if (!error && data.url && data.flowId) {
+      // URL của SDK chưa cho biết Supabase có bắt đầu được lượt đăng nhập hay không.
+      const authorize = await fetch(data.url, {
+        redirect: "manual",
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
       });
-      destination = data.url;
+      const location = authorize.headers.get("location");
+      await authorize.body?.cancel();
+      if (authorize.status === 302 && location) {
+        const provider = new URL(location);
+        if (provider.protocol === "https:" || provider.protocol === "http:") {
+          store.set(GOOGLE_ATTEMPT_COOKIE, JSON.stringify({ next, flowId: data.flowId }), {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: callback.protocol === "https:",
+            path: GOOGLE_CALLBACK_PATH,
+            maxAge: 600,
+          });
+          destination = provider.href;
+        }
+      }
     }
-  } catch (error) {
-    console.error("Could not start Google sign-in", error);
+  } catch {
+    console.error("Không thể bắt đầu đăng nhập với Google.");
+  }
+  if (destination.startsWith("/")) {
+    store.set(GOOGLE_ATTEMPT_COOKIE, "", { path: GOOGLE_CALLBACK_PATH, maxAge: 0 });
   }
   redirect(destination);
 }

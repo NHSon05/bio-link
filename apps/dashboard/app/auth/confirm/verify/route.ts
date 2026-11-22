@@ -1,18 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createSessionClient, dashboardOrigin } from "@/lib/auth";
-import { EMAIL_CONFIRM_HEADERS, EMAIL_CONFIRM_PATH, isEmailTokenHash } from "@/lib/emailConfirmation";
+import { AUTH_LINK_HEADERS, authRedirect, createSessionClient, dashboardOrigin } from "@/lib/auth";
+import { EMAIL_CONFIRM_PATH, isSignupTokenHash } from "@/lib/emailConfirmation";
 
 export async function POST(request: NextRequest) {
   const origin = dashboardOrigin();
   if (request.headers.get("origin") !== origin) {
-    return new NextResponse(null, { status: 403, headers: EMAIL_CONFIRM_HEADERS });
+    return new NextResponse(null, { status: 403, headers: AUTH_LINK_HEADERS });
   }
 
   let destination = EMAIL_CONFIRM_PATH;
   try {
     const form = await request.formData();
     const [tokenHash, ...extraTokens] = form.getAll("token_hash");
-    if (!extraTokens.length && isEmailTokenHash(tokenHash)) {
+    if (!extraTokens.length && isSignupTokenHash(tokenHash)) {
       const supabase = await createSessionClient();
       // Supabase chấp nhận cả mã khôi phục với loại "email"; chỉ dùng loại dành cho đăng ký.
       const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "signup" });
@@ -22,5 +22,5 @@ export async function POST(request: NextRequest) {
     // Giữ thông báo chung cho liên kết lỗi và không ghi mã xác nhận vào nhật ký.
   }
 
-  return NextResponse.redirect(new URL(destination, origin), { status: 303, headers: EMAIL_CONFIRM_HEADERS });
+  return authRedirect(destination, 303);
 }

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { safeNext } from "@/lib/auth";
 import { signInWithGoogle } from "./actions";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 import LoginForm from "./LoginForm";
 
 export const metadata: Metadata = { title: "Đăng nhập · bio-link" };
@@ -47,9 +48,7 @@ async function Form({ searchParams }: Pick<PageProps<"/login">, "searchParams">)
             <AlertDescription>Không đăng nhập được với Google. Vui lòng thử lại.</AlertDescription>
           </Alert>
         )}
-        <Button type="submit" variant="outline" size="lg">
-          Đăng nhập với Google
-        </Button>
+        <GoogleSignInButton />
       </form>
     </>
   );

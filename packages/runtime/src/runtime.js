@@ -22,6 +22,17 @@
   var beacon = root.getAttribute("data-beacon") || "";
   var isPreview = root.getAttribute("data-preview") === "1";
 
+  var traffic = root.getAttribute("data-traffic");
+  function count(kind) {
+    if (isPreview || !traffic) return;
+    var body = JSON.stringify({ slug: slug, kind: kind });
+    if (navigator.sendBeacon && navigator.sendBeacon(traffic, body)) return;
+    fetch(traffic, { method: "POST", body: body, mode: "no-cors", credentials: "omit", keepalive: true }).catch(
+      function () {},
+    );
+  }
+  count("view");
+
   /**
    * @param {string} blockId
    * @param {string} pos
@@ -89,6 +100,7 @@
 
     var a = closest(t, "data-track");
     if (a) {
+      count("click");
       emit(a.getAttribute("data-track") || "", a.getAttribute("data-pos") || "", a.getAttribute("href") || "");
       if (isPreview) e.preventDefault(); // trong dashboard không mở tab mới
     }

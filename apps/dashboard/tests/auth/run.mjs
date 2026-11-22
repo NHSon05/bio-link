@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,6 +29,7 @@ let networkCreated = false;
 try {
   env.DOCKER_HOST ||= run("docker", ["context", "inspect", "--format", "{{.Endpoints.docker.Host}}"]).trim();
   mkdirSync(testSupabase);
+  symlinkSync(join(dashboard, "../landing/node_modules"), join(workdir, "node_modules"), "dir");
   cpSync(join(source, "migrations"), join(testSupabase, "migrations"), { recursive: true });
   cpSync(join(source, "templates"), join(testSupabase, "templates"), { recursive: true });
   const config = readFileSync(join(source, "config.toml"), "utf8")
@@ -60,7 +61,9 @@ try {
     env: {
       ...env,
       AUTH_TEST_PROJECT_ID: projectId,
+      AUTH_TEST_LANDING_DIST: join(workdir, "landing-dist"),
       AUTH_TEST_MAILPIT_URL: "http://127.0.0.1:55324",
+      AUTH_TEST_GOOGLE_URL: "http://127.0.0.1:55325",
       AUTH_TEST_SUPABASE_URL: url,
       SUPABASE_URL: url,
       SUPABASE_PUBLISHABLE_KEY: publishableKey,

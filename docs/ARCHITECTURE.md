@@ -70,7 +70,7 @@ flowchart LR
 | Media storage    | Supabase Storage bucket `media`                         | —                                                                                         | Supabase              | Planned (F4)                                  |
 | Build and deploy | CI job, S3, CloudFront                                  | —                                                                                         | CI + AWS              | Planned (F5)                                  |
 | Automation       | n8n workflows                                           | —                                                                                         | n8n                   | Planned (F9)                                  |
-| Analytics        | GA4 + own `events` table                                | —                                                                                         | Browser + dashboard   | Client side Built; storage Planned (F7)       |
+| Analytics        | GA4 + daily `site_traffic` counters                     | —                                                                                         | Browser + dashboard   | Daily counts built; per-block storage planned |
 
 ## Data flows
 
@@ -91,9 +91,9 @@ flowchart LR
 
 n8n reads post stats, computes view growth, and posts scores to `SCORE-1`. Scores live in `block_scores`, separate from configs, so automation never creates versions or overwrites drafts. The build merges scores before ranking, and `/{slug}.json` carries the new order.
 
-### 4. Products (Planned, F6; fixture today)
+### 4. Products
 
-The dashboard looks up product metadata (`PROD-1`), stores products and collections in Postgres, and the build embeds the products a `shop` block needs. Pages stay static. Today the build reads `apps/landing/src/content/products.json`.
+Editors manage affiliate products in the active site’s catalog. The draft, published configuration, and version snapshots include its products and collections. Older shop blocks use the collections they reference in `packages/templates/products.json`. Astro embeds the published products into static HTML. Metadata lookup and the shared-catalog API are planned for F6.
 
 ## Data model
 

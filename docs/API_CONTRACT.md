@@ -51,6 +51,7 @@ type SiteSummary = {
   platform: string | null;
   updatedAt: string;
   canEdit: boolean;
+  publishedSlug: string | null;
 };
 
 type Version = {
@@ -90,7 +91,7 @@ Lists the sites the user can read, ordered by slug.
 
 ### SITE-2 — `GET /api/sites/{slug}` · Implemented
 
-Returns the site's **draft** config.
+Returns the site's **draft** config by default. Add `?revision=published` to read the published configuration with the same site permissions. A site awaiting its first publication returns `404` for that revision.
 
 - `200` `Site`
 - `404` when the slug does not exist or is not assigned to the user.
@@ -291,7 +292,7 @@ Returns a `301` to `/{newSlug}` (CloudFront function or S3 redirect rule), keepi
 
 ## Products and collections
 
-Products and collections are shared by all sites. Reading needs any signed-in user with at least one assignment or admin. Writing needs an editor on at least one site, or admin.
+The workspace currently saves each site's catalog with its draft and published configs through SITE-3 and SITE-4. The proposed shared-catalog API below makes products and collections available across sites. Reading needs any signed-in user with at least one assignment or admin. Writing needs an editor on at least one site, or admin.
 
 ```ts
 type Product = z.infer<typeof ProductSchema>; // id, url, affiliateUrl, network, name, image, price, currency, hidden, …
@@ -366,6 +367,10 @@ Reads metadata from a product URL without saving anything.
 - `403`, `404`. `409` when a site's published config still references the collection; the body lists those slugs.
 
 ## Tracking and analytics
+
+The signed-in Home screen reads `GET /api/sites/{slug}/traffic`. It returns 30 daily totals with `day`, `views`, and `clicks` in Vietnam time, including days with zero traffic. The endpoint uses the site read permissions from SITE-2.
+
+The public runtime sends `{ "slug": "...", "kind": "view" }` on page load and `kind: "click"` on tracked link clicks to `POST /api/traffic`. The endpoint accepts the configured landing origin and increments daily counters for published slugs. Dashboard previews skip both events.
 
 ### EVT-1 — `POST {PUBLIC_BEACON_URL}` (`/api/events`) · Proposed
 

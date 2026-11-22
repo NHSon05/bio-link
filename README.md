@@ -85,3 +85,15 @@ Run `supabase login`, `supabase link --project-ref <ref>`, and `supabase db push
 ## Claude Code
 
 `CLAUDE.md` adds orchestration rules for the subagents in `.claude/agents/`; see [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md). After each verified task, update `docs/plan.md` and `docs/project_summary.md`. `.claude/` is git-ignored.
+
+## Signed-in workspace
+
+Home shows traffic for the selected slug over 7 or 30 days (Vietnam time). Views count public page loads and clicks count tracked links. The click rate is clicks divided by views. The landing build sends anonymous daily counts to `/api/traffic` on `DASHBOARD_ORIGIN`. Set `NEXT_PUBLIC_LANDING_URL` to the landing origin and apply the `20261120110000_site_traffic.sql` migration to enable reporting.
+
+Use **Link in bio** for the profile and social links, **Slug** for templates and layout, and **Sản phẩm affiliate** for the site's product catalog. Save a draft to keep edits, then publish and rebuild landing to update the static website. Draft previews use the Astro preview server. Website shows the published configuration and links to the public page.
+
+The signed-in dashboard starts with a mock workspace containing the four demo slugs. Sample traffic, product collections, draft saves and publications use the mock API. Changes persist in the current browser for the signed-in account. Run the dashboard and Astro preview server together to see the mobile and desktop layouts. **Mở trang mẫu** opens the locally published snapshot.
+
+Run `WORKSPACE_DATA_SOURCE=mock pnpm test:auth mock-workspace.spec.ts` to check the sample workspace. The default `pnpm test:auth` suite exercises the live API against a temporary local database.
+
+When the live API has assigned sites and traffic data, set `WORKSPACE_DATA_SOURCE=live` in the dashboard environment and restart the dashboard. The live workspace uses the existing site APIs and access rules. To retire the mock in source, remove `apps/dashboard/mocks/` and the mock branch and import in `apps/dashboard/app/page.tsx`.

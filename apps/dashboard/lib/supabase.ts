@@ -59,13 +59,14 @@ function checkUser(user: User | null, error: AuthError | null, db: SupabaseClien
   return { db, userId: user.id };
 }
 
-/** Cookies ride along with cross-site requests, so writes must come from this origin. */
+/** Chỉ nhận yêu cầu ghi dùng cookie từ đúng origin của dashboard. */
 function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   if (!origin || !host) return false;
   try {
-    return new URL(origin).host === host;
+    const { protocol } = new URL(request.url);
+    return origin === new URL(`${protocol}//${host}`).origin;
   } catch {
     return false;
   }

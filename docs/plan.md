@@ -14,19 +14,19 @@ Auth has its own plan, contract, and checklist under [docs/auth](auth/AUTH_PLAN.
 
 ## Feature map
 
-| ID  | Feature                                        | Goal in plan.html | Depends on | Status       |
-| --- | ---------------------------------------------- | ----------------- | ---------- | ------------ |
-| F0  | Monorepo, schema, templates, runtime           | §5, §6, §7        | —          | Done         |
-| F1  | Dashboard auth                                 | §9                | F0         | In progress  |
-| F2  | Site editor: draft, publish, versions, preview | §7, §9            | F0, F1     | Mostly done  |
-| F3  | Site and access management (admin)             | §9                | F1, F2     | Not started  |
-| F4  | Media uploads                                  | §7                | F1         | Not started  |
-| F5  | Build and deploy pipeline                      | §3, §9            | F2         | Not started  |
-| F6  | Products, collections, affiliate links         | §12               | F1, F5     | Fixture only |
-| F7  | Click tracking and analytics                   | §8                | F5         | Client only  |
-| F8  | Subscribe endpoint                             | §12               | F5         | Client only  |
-| F9  | Viral ranking automation (n8n)                 | §2 goal 5, §4     | F5, F7     | Ranking only |
-| F10 | Quality: smoke tests, Closure checks, devices  | §6, §9            | F5         | Not started  |
+| ID  | Feature                                        | Goal in plan.html | Depends on | Status        |
+| --- | ---------------------------------------------- | ----------------- | ---------- | ------------- |
+| F0  | Monorepo, schema, templates, runtime           | §5, §6, §7        | —          | Done          |
+| F1  | Dashboard auth                                 | §9                | F0         | In progress   |
+| F2  | Site editor: draft, publish, versions, preview | §7, §9            | F0, F1     | Mostly done   |
+| F3  | Site and access management (admin)             | §9                | F1, F2     | Not started   |
+| F4  | Media uploads                                  | §7                | F1         | Not started   |
+| F5  | Build and deploy pipeline                      | §3, §9            | F2         | Not started   |
+| F6  | Products, collections, affiliate links         | §12               | F1, F5     | Per-site CRUD |
+| F7  | Click tracking and analytics                   | §8                | F5         | Daily totals  |
+| F8  | Subscribe endpoint                             | §12               | F5         | Client only   |
+| F9  | Viral ranking automation (n8n)                 | §2 goal 5, §4     | F5, F7     | Ranking only  |
+| F10 | Quality: smoke tests, Closure checks, devices  | §6, §9            | F5         | Not started   |
 
 Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in parallel → F9 → F10. Start F10's harness early and grow it with each feature.
 
@@ -127,7 +127,7 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 
 **Goal.** Marketing pastes a product link, gets its name, image, and price, and groups products into collections used by `shop` blocks.
 
-**Depends on.** F1, F5 (products are embedded into pages at build time). Products currently come from `apps/landing/src/content/products.json`.
+**Depends on.** F1, F5 (products are embedded into pages at build time). The workspace stores its catalog in the site config. Older shop blocks resolve their collections from `packages/templates/products.json`.
 
 - [ ] F6-1 Migration: `products` and `collections` tables matching `ProductSchema` and `ProductDbSchema`. Move the fixture into `seed.sql`.
 - [ ] F6-2 Metadata lookup (`PROD-1`): read JSON-LD, then Open Graph, then `<title>`. Block private and loopback addresses, cap response size and time.
@@ -151,7 +151,7 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 - [ ] F7-2 Public event endpoint (`EVT-1`): accept `text/plain` JSON from `sendBeacon`, validate, rate-limit, store.
 - [ ] F7-3 Runtime: send one `view` event per page load (`EVT-1`). Keep the Closure externs in sync.
 - [ ] F7-4 Analytics read endpoint (`ANA-1`): views, clicks, and CTR per block for a date range.
-- [ ] F7-5 Dashboard analytics panel per site.
+- [x] F7-5 Dashboard analytics panel per site. Home displays daily views, clicks, and click rate over 7 or 30 days.
 - [ ] F7-6 Add the GA4 measurement ID and UTM parameters to the build config and document them in the README.
 - [ ] F7-7 HTTP tests for `EVT-1` and `ANA-1`.
 

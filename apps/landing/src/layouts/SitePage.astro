@@ -14,9 +14,9 @@ import {
   themeOf,
   variantOf,
   type Block,
-  type ProductDb,
   type Site,
 } from "@bio-link/schema";
+import { catalogFor } from "@bio-link/templates/catalog";
 import { templates } from "@bio-link/templates";
 import ProfileHeader from "../components/ProfileHeader.astro";
 import BlockRenderer from "../components/BlockRenderer.astro";
@@ -26,11 +26,11 @@ import "../styles/page.css";
 
 interface Props {
   site: Site;
-  products: ProductDb;
   preview?: boolean;
 }
-const { site, products, preview = false } = Astro.props;
+const { site, preview = false } = Astro.props;
 
+const products = catalogFor(site);
 const WEB_FONTS = new Set(["Sora", "Manrope", "Inter", "DM Sans", "Be Vietnam Pro"]);
 const tpl = templateOf(site, templates);
 const theme = themeOf(site, tpl);
@@ -112,6 +112,7 @@ const ogImage = site.profile.cover || site.profile.avatar;
       style={style}
       data-template={tpl.id}
       data-slug={site.slug}
+      data-traffic={new URL("/api/traffic", import.meta.env.DASHBOARD_ORIGIN ?? "http://localhost:3000").href}
       data-beacon={beacon}
       data-preview={preview ? "1" : undefined}
     >

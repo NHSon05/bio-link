@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseEnv, GOOGLE_CALLBACK_PATH } from "@/lib/auth";
-import { EMAIL_CONFIRM_HEADERS, EMAIL_CONFIRM_PATH, EMAIL_VERIFY_PATH } from "@/lib/emailConfirmation";
+import { AUTH_LINK_HEADERS, getSupabaseEnv, GOOGLE_CALLBACK_PATH } from "@/lib/auth";
+import { EMAIL_CONFIRM_PATH, EMAIL_VERIFY_PATH } from "@/lib/emailConfirmation";
 
 const publicAuthPages = new Set(["/login", "/register", "/register/resend", "/forgot-password"]);
 const authCallbacks = new Set([GOOGLE_CALLBACK_PATH, EMAIL_VERIFY_PATH]);
@@ -10,7 +10,7 @@ const authCallbacks = new Set([GOOGLE_CALLBACK_PATH, EMAIL_VERIFY_PATH]);
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   // Các callback tự xử lý xác thực và phiên đăng nhập.
-  if (pathname === EMAIL_CONFIRM_PATH) return NextResponse.next({ headers: EMAIL_CONFIRM_HEADERS });
+  if (pathname === EMAIL_CONFIRM_PATH) return NextResponse.next({ headers: AUTH_LINK_HEADERS });
   if (authCallbacks.has(pathname)) return NextResponse.next();
 
   const env = getSupabaseEnv();

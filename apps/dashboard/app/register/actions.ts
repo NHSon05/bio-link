@@ -1,6 +1,6 @@
 "use server";
 
-import { createSessionClient } from "@/lib/auth";
+import { createEmailRequestClient } from "@/lib/auth";
 import { authEmailAddress, MIN_PASSWORD_LENGTH, readAuthCredentials, type EmailRequestState } from "@/lib/authForm";
 
 export type RegisterState = EmailRequestState & {
@@ -27,7 +27,7 @@ export async function register(_: RegisterState, form: FormData): Promise<Regist
   }
 
   try {
-    const supabase = await createSessionClient();
+    const supabase = createEmailRequestClient();
     const { error } = await supabase.auth.signUp({ email, password });
     if (!error || emailPrivacyErrors.has(error.code ?? "")) return { submitted: true };
     if (error.code === "signup_disabled") return { email, error: "Đăng ký tài khoản hiện chưa khả dụng." };
