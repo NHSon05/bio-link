@@ -5,6 +5,7 @@ export async function siteRequest<T>(path: string, init?: RequestInit): Promise<
     window.location.reload(); // proxy.ts redirects to /login
     throw new Error("Phiên đăng nhập đã hết hạn.");
   }
+  if (response.status === 204) return undefined as T;
   const body = await response.json();
   if (!response.ok) throw new Error(body.error ?? "Không thể truy cập dữ liệu.");
   return body;

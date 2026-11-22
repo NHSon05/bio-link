@@ -11,6 +11,7 @@ import {
   Link2,
   LogOut,
   Search,
+  ShieldCheck,
   ShoppingBag,
   UserRound,
 } from "lucide-react";
@@ -48,6 +49,7 @@ export const sections = [
     icon: ShoppingBag,
     keywords: "my affiliate products sản phẩm của tôi",
   },
+  { id: "admin", title: "Quản trị", icon: ShieldCheck, keywords: "admin thành viên quyền tạo xóa đổi slug" },
 ] as const;
 export type Section = (typeof sections)[number]["id"];
 
@@ -60,6 +62,7 @@ export function workspaceUrl(view: Section, slug?: string) {
 
 type Props = {
   email: string;
+  isAdmin: boolean;
   sites: SiteSummary[];
   slug: string;
   view: Section;
@@ -78,7 +81,8 @@ export function WorkspaceShell(props: Props) {
   );
 }
 
-function ShellContents({ email, sites, slug, view, saving, chooseSite, children }: Props) {
+function ShellContents({ email, isAdmin, sites, slug, view, saving, chooseSite, children }: Props) {
+  const visible = sections.filter((section) => section.id !== "admin" || isAdmin);
   const api = useWorkspaceApi();
   const { setOpenMobile } = useSidebar();
   const [open, setOpen] = useState(false);
@@ -104,7 +108,7 @@ function ShellContents({ email, sites, slug, view, saving, chooseSite, children 
       .replace(/[\u0300-\u036f]/g, "")
       .replaceAll("đ", "d");
   const term = normalize(query.trim());
-  const matches = sections.filter((section) => normalize(section.title + " " + section.keywords).includes(term));
+  const matches = visible.filter((section) => normalize(section.title + " " + section.keywords).includes(term));
   const siteMatches = sites.filter((site) => normalize(site.title + " " + site.slug).includes(term));
   const current = sites.find((site) => site.slug === slug);
   return (
@@ -113,6 +117,11 @@ function ShellContents({ email, sites, slug, view, saving, chooseSite, children 
         <SidebarHeader className="px-6 pt-8 pb-9">
           <Link
             href={workspaceUrl("home", slug)}
+            prefetch={false}
+            onNavigate={(event) => {
+              event.preventDefault();
+              window.history.pushState(null, "", workspaceUrl("home", slug));
+            }}
             className="flex w-fit items-center gap-2.5 text-[26px] leading-none font-bold tracking-[-.065em]"
           >
             <BrandMark />
@@ -122,7 +131,7 @@ function ShellContents({ email, sites, slug, view, saving, chooseSite, children 
         <SidebarContent className="px-3">
           <nav aria-label="Điều hướng chính">
             <SidebarMenu className="gap-1.5">
-              {sections.map(({ id, title, icon: Icon }) => (
+              {visible.map(({ id, title, icon: Icon }) => (
                 <SidebarMenuItem key={id} className={id === "products" ? "mt-3 border-t pt-4" : ""}>
                   <SidebarMenuButton
                     asChild
@@ -131,6 +140,11 @@ function ShellContents({ email, sites, slug, view, saving, chooseSite, children 
                   >
                     <Link
                       href={workspaceUrl(id, slug)}
+                      prefetch={false}
+                      onNavigate={(event) => {
+                        event.preventDefault();
+                        window.history.pushState(null, "", workspaceUrl(id, slug));
+                      }}
                       aria-current={view === id ? "page" : undefined}
                       onClick={() => setOpenMobile(false)}
                     >
@@ -224,7 +238,15 @@ function ShellContents({ email, sites, slug, view, saving, chooseSite, children 
           <div className="max-h-[50vh] overflow-y-auto">
             {matches.map(({ id, title, icon: Icon }) => (
               <Button key={id} variant="ghost" asChild className="w-full justify-start">
-                <Link href={workspaceUrl(id, slug)} onClick={() => setOpen(false)}>
+                <Link
+                  href={workspaceUrl(id, slug)}
+                  prefetch={false}
+                  onNavigate={(event) => {
+                    event.preventDefault();
+                    window.history.pushState(null, "", workspaceUrl(id, slug));
+                  }}
+                  onClick={() => setOpen(false)}
+                >
                   <Icon />
                   {title}
                   <ArrowUpRight className="ml-auto" />

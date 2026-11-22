@@ -29,6 +29,7 @@ After each phase, record the verification command and result under its exit chec
 
 ## Phase 2 — Public authentication routes
 
+- [x] **DevTools discovery follow-up.** A matcher assertion failed before excluding the exact Chrome workspace discovery path and passed afterward, including the query-string variant. `/`, `/login`, `/api/sites`, `/auth/callback`, and another `.well-known` JSON path still match the proxy. Verification: `/tmp/linktree-proxy-check.cjs` with Next.js `unstable_doesMiddlewareMatch`; `pnpm lint` passed. `pnpm format:check` reported existing formatting issues in four `demo/*.html` files.
 - [x] **Red.** Test that guests can follow the registration and recovery links from `/login` and reach email confirmation and the Google callback without a redirect loop. Test that the dashboard still requires a session. Cover `SESSION-1`.
 - [x] **Green.** Add the login links and the auth routes needed by later phases. Adjust the route guard for the specific public entry points.
 - [x] **Refactor.** Consolidate route checks and keep callbacks separate from protected site APIs.

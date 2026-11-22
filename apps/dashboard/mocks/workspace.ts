@@ -48,6 +48,17 @@ export function mockWorkspaceApi(userId: string): WorkspaceApi {
       localStorage.setItem(key(site.slug), JSON.stringify({ draft, published: publish ? draft : previous.published }));
       return draft;
     },
+    async me(signal) {
+      signal.throwIfAborted();
+      return { userId, email: null, isAdmin: false };
+    },
+    upload: unavailable,
+    createSite: unavailable,
+    renameSite: unavailable,
+    deleteSite: unavailable,
+    members: unavailable,
+    setMember: unavailable,
+    removeMember: unavailable,
     async traffic(slug, signal) {
       signal.throwIfAborted();
       const index = fixtures.findIndex((site) => site.slug === slug);
@@ -59,4 +70,9 @@ export function mockWorkspaceApi(userId: string): WorkspaceApi {
       });
     },
   };
+}
+
+// Dữ liệu mẫu chỉ sống trong localStorage: không có ảnh tải lên hay quản trị trang.
+async function unavailable(): Promise<never> {
+  throw new Error("Chức năng này cần dữ liệu thật (WORKSPACE_DATA_SOURCE=live).");
 }

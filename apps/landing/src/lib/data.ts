@@ -11,6 +11,24 @@ function parseSite(raw: unknown, source: string): Site {
   return result.data;
 }
 
+function buildClient() {
+  return createClient(SUPABASE_URL!, SUPABASE_SECRET_KEY!, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+  });
+}
+
+/** Slug cũ sau khi đổi tên (ADMIN-2) → slug hiện tại, chỉ với trang đã xuất bản (PUB-4). */
+export async function loadRedirects(): Promise<{ from: string; to: string }[]> {
+  if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) return [];
+  // shortcut: đọc hết một lần, đủ cho vài trăm slug; phân trang khi số chuyển hướng vượt 1000.
+  const { data, error } = await buildClient()
+    .from("slug_redirects")
+    .select("from_slug, sites!inner(slug)")
+    .not("sites.published_config", "is", null);
+  if (error) throw new Error(`Could not load slug redirects: ${error.message}`);
+  return data.map((row) => ({ from: row.from_slug, to: (row.sites as unknown as { slug: string }).slug }));
+}
+
 export async function loadPublishedSites(): Promise<Site[]> {
   if (!SUPABASE_URL && !SUPABASE_SECRET_KEY) {
     return Object.entries(files).map(([file, raw]) => parseSite(raw, file));
@@ -19,9 +37,7 @@ export async function loadPublishedSites(): Promise<Site[]> {
     throw new Error("Set both SUPABASE_URL and SUPABASE_SECRET_KEY for the landing app.");
   }
 
-  const db = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
-  });
+  const db = buildClient();
   const sites: Site[] = [];
   const pageSize = 100;
   for (let offset = 0; ; offset += pageSize) {

@@ -14,7 +14,7 @@ export class SiteApiError extends Error {
   }
 }
 
-export type SiteAccess = { db: SupabaseClient; userId: string };
+export type SiteAccess = { db: SupabaseClient; userId: string; email: string | null };
 
 export function siteWriter() {
   const key = process.env.SUPABASE_SECRET_KEY;
@@ -56,7 +56,7 @@ function checkUser(user: User | null, error: AuthError | null, db: SupabaseClien
     throw error;
   }
   if (error || !user) throw new SiteApiError(401, "Cần đăng nhập");
-  return { db, userId: user.id };
+  return { db, userId: user.id, email: user.email ?? null };
 }
 
 /** Chỉ nhận yêu cầu ghi dùng cookie từ đúng origin của dashboard. */
@@ -72,12 +72,17 @@ function sameOrigin(request: Request) {
   }
 }
 
-export async function siteResponse(request: Request, handle: (access: SiteAccess) => Promise<unknown>) {
+export async function siteResponse(
+  request: Request,
+  handle: (access: SiteAccess) => Promise<unknown>,
+  status: 200 | 201 | 204 = 200,
+) {
   await connection();
   const headers = { "Cache-Control": "private, no-store" };
   try {
     const access = await authorizeSiteRequest(request);
-    return Response.json(await handle(access), { headers });
+    const body = await handle(access);
+    return status === 204 ? new Response(null, { status, headers }) : Response.json(body, { status, headers });
   } catch (error) {
     if (error instanceof SiteApiError) {
       return Response.json({ error: error.message }, { status: error.status, headers });

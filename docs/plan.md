@@ -14,19 +14,19 @@ Auth has its own plan, contract, and checklist under [docs/auth](auth/AUTH_PLAN.
 
 ## Feature map
 
-| ID  | Feature                                        | Goal in plan.html | Depends on | Status        |
-| --- | ---------------------------------------------- | ----------------- | ---------- | ------------- |
-| F0  | Monorepo, schema, templates, runtime           | §5, §6, §7        | —          | Done          |
-| F1  | Dashboard auth                                 | §9                | F0         | In progress   |
-| F2  | Site editor: draft, publish, versions, preview | §7, §9            | F0, F1     | Mostly done   |
-| F3  | Site and access management (admin)             | §9                | F1, F2     | Not started   |
-| F4  | Media uploads                                  | §7                | F1         | Not started   |
-| F5  | Build and deploy pipeline                      | §3, §9            | F2         | Not started   |
-| F6  | Products, collections, affiliate links         | §12               | F1, F5     | Per-site CRUD |
-| F7  | Click tracking and analytics                   | §8                | F5         | Daily totals  |
-| F8  | Subscribe endpoint                             | §12               | F5         | Client only   |
-| F9  | Viral ranking automation (n8n)                 | §2 goal 5, §4     | F5, F7     | Ranking only  |
-| F10 | Quality: smoke tests, Closure checks, devices  | §6, §9            | F5         | Not started   |
+| ID  | Feature                                        | Goal in plan.html | Depends on | Status              |
+| --- | ---------------------------------------------- | ----------------- | ---------- | ------------------- |
+| F0  | Monorepo, schema, templates, runtime           | §5, §6, §7        | —          | Done                |
+| F1  | Dashboard auth                                 | §9                | F0         | In progress         |
+| F2  | Site editor: draft, publish, versions, preview | §7, §9            | F0, F1     | F2-10, F2-11 left   |
+| F3  | Site and access management (admin)             | §9                | F1, F2     | Done (builds in F5) |
+| F4  | Media uploads                                  | §7                | F1         | Thumbnails left     |
+| F5  | Build and deploy pipeline                      | §3, §9            | F2         | Not started         |
+| F6  | Products, collections, affiliate links         | §12               | F1, F5     | Per-site CRUD       |
+| F7  | Click tracking and analytics                   | §8                | F5         | Daily totals        |
+| F8  | Subscribe endpoint                             | §12               | F5         | Client only         |
+| F9  | Viral ranking automation (n8n)                 | §2 goal 5, §4     | F5, F7     | Ranking only        |
+| F10 | Quality: smoke tests, Closure checks, devices  | §6, §9            | F5         | Not started         |
 
 Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in parallel → F9 → F10. Start F10's harness early and grow it with each feature.
 
@@ -69,12 +69,12 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 - [x] F2-5 Version history with cursor paging (`VER-1`).
 - [x] F2-6 Restore a version as a new published version (`VER-2`).
 - [x] F2-7 Astro `/preview` renders a draft with production templates (`PREV-1`).
-- [ ] F2-8 Add HTTP tests for `SITE-1`…`SITE-5` and `VER-1`…`VER-2`, including the role matrix in the contract's [common rules](API_CONTRACT.md#common-rules).
-- [ ] F2-9 Add `GET /api/me` so the editor can hide actions the user cannot perform (`ME-1`).
+- [x] F2-8 Add HTTP tests for `SITE-1`…`SITE-5` and `VER-1`…`VER-2`, including the role matrix in the contract's [common rules](API_CONTRACT.md#common-rules).
+- [x] F2-9 Add `GET /api/me` so the editor can hide actions the user cannot perform (`ME-1`).
 - [ ] F2-10 Return `published_by` as an email or display name in the version list (`VER-1`).
 - [ ] F2-11 Decide whether to keep `PUT /api/sites/{slug}` (`SITE-5`). Remove it once no client uses it.
 
-**Verification.** —
+**Verification.** `pnpm test:auth` (2026-11-22, isolated local Supabase) → 56 passed, 1 skipped (mock-only spec); `tests/auth/site-api.spec.ts` covers the contract IDs above.
 
 ## F3 — Site and access management (admin)
 
@@ -82,15 +82,15 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 
 **Depends on.** F1 (accounts exist), F2 (site API).
 
-- [ ] F3-1 Migration: `slug_redirects (from_slug primary key, site_id, created_at)` and a `create_site`, `rename_site`, `delete_site` RPC that checks `site_admins`.
-- [ ] F3-2 Create a site from a template (`ADMIN-1`). Seed `draft_config` with the template's default regions and an empty block list.
-- [ ] F3-3 Rename a slug and keep a redirect from the old slug (`ADMIN-2`). The landing build emits a redirect page or CDN rule for each row in `slug_redirects` (`PUB-4`).
-- [ ] F3-4 Delete a site (`ADMIN-3`). Require the slug in the request body as confirmation.
-- [ ] F3-5 List, assign, change, and remove members (`MEM-1`…`MEM-3`). Look users up by email.
-- [ ] F3-6 Dashboard screens: site list actions for admins, a members dialog, a rename dialog with a warning about the Linktree banner URL.
-- [ ] F3-7 HTTP tests for every ID above, including non-admin `403` and the cases in the contract.
+- [x] F3-1 Migration: `slug_redirects (from_slug primary key, site_id, created_at)` and a `create_site`, `rename_site`, `delete_site` RPC that checks `site_admins`.
+- [x] F3-2 Create a site from a template (`ADMIN-1`). Seed `draft_config` with the template's default regions and an empty block list.
+- [x] F3-3 Rename a slug and keep a redirect from the old slug (`ADMIN-2`). The landing build emits a redirect page or CDN rule for each row in `slug_redirects` (`PUB-4`). Done as a static redirect page; a CloudFront 301 belongs to F5.
+- [x] F3-4 Delete a site (`ADMIN-3`). Require the slug in the request body as confirmation.
+- [x] F3-5 List, assign, change, and remove members (`MEM-1`…`MEM-3`). Look users up by email.
+- [x] F3-6 Dashboard screens: site list actions for admins, a members dialog, a rename dialog with a warning about the Linktree banner URL. Built as panels on an admin-only "Quản trị" tab.
+- [x] F3-7 HTTP tests for every ID above, including non-admin `403` and the cases in the contract.
 
-**Verification.** —
+**Verification.** `pnpm test:auth` (2026-11-22, isolated local Supabase) → 56 passed, 1 skipped (mock-only spec); `tests/auth/site-api.spec.ts` covers the contract IDs above.
 
 ## F4 — Media uploads
 
@@ -98,13 +98,13 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 
 **Depends on.** F1.
 
-- [ ] F4-1 Create a public Supabase Storage bucket `media` with a size limit and an image MIME allow-list. Writes happen only through the dashboard with the secret key.
-- [ ] F4-2 Upload endpoint (`MEDIA-1`): validate type and size, store under `sites/{slug}/{uuid}.{ext}`, return the public URL.
-- [ ] F4-3 Convert uploads to WebP on the server, or record this as a follow-up if it adds too much weight.
-- [ ] F4-4 Editor: an upload control on the image fields (avatar, thumbnail, cover) using shadcn primitives.
-- [ ] F4-5 HTTP tests for `MEDIA-1`.
+- [x] F4-1 Create a public Supabase Storage bucket `media` with a size limit and an image MIME allow-list. Writes happen only through the dashboard with the secret key.
+- [x] F4-2 Upload endpoint (`MEDIA-1`): validate type and size, store under `sites/{slug}/{uuid}.{ext}`, return the public URL.
+- [x] F4-3 Convert uploads to WebP on the server, or record this as a follow-up if it adds too much weight.
+- [ ] F4-4 Editor: an upload control on the image fields (avatar, thumbnail, cover) using shadcn primitives. Avatar and cover are done (`components/workspace/image-field.tsx`); block thumbnails have no editor field yet.
+- [x] F4-5 HTTP tests for `MEDIA-1`.
 
-**Verification.** —
+**Verification.** `pnpm test:auth` (2026-11-22, isolated local Supabase) → 56 passed, 1 skipped (mock-only spec); `tests/auth/site-api.spec.ts` covers the contract IDs above.
 
 ## F5 — Build and deploy pipeline
 

@@ -145,5 +145,6 @@ Site JSON shape (from `packages/schema`): `slug`, `template`, `theme` overrides,
 | AD-8  | Scores outside configs                                | Automation must not create versions or clobber drafts.                                                                    | The build merges two sources.                                                                       |
 | AD-9  | Direct links with beacon tracking, no `/go/` redirect | No extra hop for visitors.                                                                                                | Click counts depend on `sendBeacon` reliability.                                                    |
 | AD-10 | Linktree stays as the trusted entry point             | New domains get flagged by social platforms.                                                                              | One extra tap; measure banner → landing conversion.                                                 |
+| AD-11 | Renaming a slug rewrites it in every saved version    | Restoring an old version must produce the current slug (`sites` checks the config slug).                                  | History no longer shows the slug a version was published under; `slug_redirects` keeps old slugs.   |
 
 Record new decisions here with the next `AD-` number, and update the affected component and status rows.

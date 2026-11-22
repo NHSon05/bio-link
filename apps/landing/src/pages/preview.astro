@@ -2,7 +2,7 @@
 /**
  * Route preview cho dashboard (plan mục 7). Chỉ chạy trên server nội bộ, không lên CDN.
  *  - GET  /preview?slug=x  → render bản đã publish của slug
- *  - POST /preview (body = JSON bản nháp) → render bản nháp bằng đúng template production
+ *  - POST /preview (body = JSON bản nháp, hoặc form có trường `site` = JSON) → render bản nháp bằng đúng template production
  * Dashboard gửi JSON từ origin được cấu hình.
  */
 import { SiteSchema, type Site } from "@bio-link/schema";
@@ -32,7 +32,10 @@ if (method === "POST") {
     return new Response(null, { status: 403 });
   }
   try {
-    const r = SiteSchema.safeParse(await Astro.request.json());
+    // Dashboard điều hướng iframe bằng form POST (trường `site` chứa JSON); client khác gửi JSON thẳng.
+    const type = Astro.request.headers.get("content-type") ?? "";
+    const form = /form-urlencoded|multipart\/form-data/i.test(type) ? await Astro.request.formData() : undefined;
+    const r = SiteSchema.safeParse(form ? JSON.parse(String(form.get("site") ?? "")) : await Astro.request.json());
     if (r.success) site = r.data;
     else error = r.error.message;
   } catch (e) {

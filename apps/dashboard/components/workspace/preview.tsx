@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Monitor, Smartphone } from "lucide-react";
 import type { Site } from "@bio-link/schema";
 import { BrowserFrame, PhoneFrame } from "@/components/device-frame";
@@ -78,50 +78,63 @@ export function PreviewScreen({
   title?: string;
 }) {
   const api = useWorkspaceApi();
-  const [html, setHtml] = useState("");
+  const name = useId();
+  const submitted = useRef(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     const ctl = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const config = !site || published ? await api.read(slug, published, ctl.signal) : site;
-        const r = await fetch(new URL("/preview", landingUrl), {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          signal: ctl.signal,
-          body: JSON.stringify(config),
-        });
-        if (!r.ok) throw new Error();
-        const output = await r.text();
-        if (!ctl.signal.aborted) {
-          setHtml(output.replace(/<head>/i, '<head><base href="' + new URL("/", landingUrl).href + '">'));
-          setError("");
-        }
+        if (ctl.signal.aborted) return;
+        // Điều hướng iframe bằng form POST để tài liệu có origin của landing, tài nguyên con tải same-origin (astro dev chặn cross-site).
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = new URL("/preview", landingUrl).href;
+        form.target = name;
+        form.hidden = true;
+        const field = document.createElement("input");
+        field.type = "hidden";
+        field.name = "site";
+        field.value = JSON.stringify(config);
+        form.append(field);
+        document.body.append(form);
+        submitted.current = true;
+        form.submit();
+        form.remove();
+        setError("");
       } catch {
-        if (!ctl.signal.aborted) setError("Không tải được bản xem trước từ máy chủ landing.");
+        if (!ctl.signal.aborted) setError("Không tải được bản xem trước.");
       }
     }, 200);
     return () => {
       clearTimeout(timer);
       ctl.abort();
     };
-  }, [api, site, slug, published, landingUrl]);
-  let content: ReactNode;
-  if (error) {
-    content = (
-      <p role="status" className="m-7 rounded-md bg-card p-4 text-sm text-foreground">
-        {error}
-      </p>
-    );
-  } else if (!html) {
-    content = (
-      <p className="p-9 text-sm text-ink" role="status">
-        Đang tải bản xem trước…
-      </p>
-    );
-  } else {
-    content = <iframe title={title} sandbox="allow-scripts" srcDoc={html} className="block size-full border-0" />;
-  }
+  }, [api, site, slug, published, landingUrl, name]);
+  const content = (
+    <>
+      {error ? (
+        <p role="status" className="m-7 rounded-md bg-card p-4 text-sm text-foreground">
+          {error}
+        </p>
+      ) : (
+        !loaded && (
+          <p className="p-9 text-sm text-ink" role="status">
+            Đang tải bản xem trước…
+          </p>
+        )
+      )}
+      <iframe
+        name={name}
+        title={title}
+        sandbox="allow-scripts allow-same-origin"
+        onLoad={() => submitted.current && setLoaded(true)}
+        className={loaded && !error ? "block size-full border-0" : "hidden"}
+      />
+    </>
+  );
   if (desktop === undefined) return content;
   return (
     <PreviewDevice desktop={desktop} address={new URL(landingUrl).host + "/" + slug} compact={compact}>
