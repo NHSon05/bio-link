@@ -1,11 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseEnv, GOOGLE_CALLBACK_PATH } from "@/lib/auth";
+import { AUTH_LINK_HEADERS, getSupabaseEnv, GOOGLE_CALLBACK_PATH } from "@/lib/auth";
+import { EMAIL_CONFIRM_PATH, EMAIL_VERIFY_PATH } from "@/lib/emailConfirmation";
+
+const publicAuthPages = new Set(["/login", "/register", "/register/resend", "/forgot-password"]);
+const authCallbacks = new Set([GOOGLE_CALLBACK_PATH, EMAIL_VERIFY_PATH]);
 
 /** Refreshes the Supabase session cookie and sends signed-out visitors to /login. */
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  if (pathname === GOOGLE_CALLBACK_PATH) return NextResponse.next();
+  // Các callback tự xử lý xác thực và phiên đăng nhập.
+  if (pathname === EMAIL_CONFIRM_PATH) return NextResponse.next({ headers: AUTH_LINK_HEADERS });
+  if (authCallbacks.has(pathname)) return NextResponse.next();
 
   const env = getSupabaseEnv();
   if (!env) return NextResponse.next();
@@ -30,7 +36,7 @@ export async function proxy(request: NextRequest) {
   // API routes answer 401 themselves instead of redirecting.
   if (pathname.startsWith("/api/")) return response;
 
-  if (!signedIn && pathname !== "/login") {
+  if (!signedIn && !publicAuthPages.has(pathname)) {
     const target = new URL("/login", request.url);
     if (pathname !== "/") target.searchParams.set("next", pathname + search);
     return withCookies(NextResponse.redirect(target), response);

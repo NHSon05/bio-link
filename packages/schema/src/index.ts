@@ -92,6 +92,24 @@ export const BlockSchema = z.looseObject({
 });
 export type Block = z.infer<typeof BlockSchema>;
 
+// ---------- Products (affiliate) ----------
+export const ProductSchema = z.object({
+  id: z.string(),
+  url: z.httpUrl(),
+  affiliateUrl: z.httpUrl().optional(),
+  title: z.string(),
+  image: z.string().optional(),
+  price: z.union([z.number(), z.string()]).optional(),
+  currency: z.string().optional(),
+  visible: z.boolean().optional(),
+});
+export const ProductDbSchema = z.object({
+  products: z.array(ProductSchema),
+  collections: z.array(z.object({ id: z.string(), name: z.string(), items: z.array(z.string()) })),
+});
+export type Product = z.infer<typeof ProductSchema>;
+export type ProductDb = z.infer<typeof ProductDbSchema>;
+
 // ---------- Site (1 slug) ----------
 const RegionLayoutSchema = z.object({
   blocks: z.array(z.string()).default([]),
@@ -121,27 +139,10 @@ export const SiteSchema = z.object({
     socials: z.array(z.object({ type: z.string(), url: z.string() })).default([]),
   }),
   blocks: z.array(BlockSchema).default([]),
+  catalog: ProductDbSchema.optional(),
   updatedAt: z.string().optional(),
 });
 export type Site = z.infer<typeof SiteSchema>;
-
-// ---------- Products (affiliate) ----------
-export const ProductSchema = z.object({
-  id: z.string(),
-  url: z.string(),
-  affiliateUrl: z.string().optional(),
-  title: z.string(),
-  image: z.string().optional(),
-  price: z.union([z.number(), z.string()]).optional(),
-  currency: z.string().optional(),
-  visible: z.boolean().optional(),
-});
-export const ProductDbSchema = z.object({
-  products: z.array(ProductSchema),
-  collections: z.array(z.object({ id: z.string(), name: z.string(), items: z.array(z.string()) })),
-});
-export type Product = z.infer<typeof ProductSchema>;
-export type ProductDb = z.infer<typeof ProductDbSchema>;
 
 // ---------- Logic (giữ giống demo/assets/render.js) ----------
 const WIDE_BY_DEFAULT = new Set<string>([

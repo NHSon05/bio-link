@@ -5,7 +5,9 @@ import { siteResponse } from "@/lib/supabase";
 type Context = { params: Promise<{ slug: string }> };
 
 export function GET(request: Request, { params }: Context) {
-  return siteResponse(request, async ({ db }) => readSite(db, (await params).slug));
+  return siteResponse(request, async ({ db }) =>
+    readSite(db, (await params).slug, new URL(request.url).searchParams.get("revision") === "published"),
+  );
 }
 
 export function PATCH(request: Request, { params }: Context) {

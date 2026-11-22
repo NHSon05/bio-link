@@ -7,7 +7,7 @@
  */
 import { SiteSchema, type Site } from "@bio-link/schema";
 import SitePage from "../layouts/SitePage.astro";
-import { loadPublishedSites, products } from "../lib/data";
+import { loadPublishedSites } from "../lib/data";
 
 export const prerender = false;
 
@@ -50,7 +50,7 @@ else if (!site) Astro.response.status = 404;
 {error ? (
   <pre style="font:13px/1.5 ui-monospace,monospace;color:#b00;padding:16px;white-space:pre-wrap">{error}</pre>
 ) : site ? (
-  <SitePage site={site} products={products} preview />
+  <SitePage site={site} preview />
 ) : (
   <p>Chưa có trang đã publish.</p>
 )}

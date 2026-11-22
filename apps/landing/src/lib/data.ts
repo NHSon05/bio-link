@@ -1,7 +1,6 @@
-import { ProductDbSchema, SiteSchema, type Site } from "@bio-link/schema";
+import { SiteSchema, type Site } from "@bio-link/schema";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from "astro:env/server";
-import productsJson from "../content/products.json";
 
 const files = import.meta.glob("../content/sites/*.json", { eager: true, import: "default" });
 let buildSnapshot: Promise<Site[]> | undefined;
@@ -43,5 +42,3 @@ export function loadBuildSites(): Promise<Site[]> {
   if (import.meta.env.DEV) return loadPublishedSites();
   return (buildSnapshot ??= loadPublishedSites());
 }
-
-export const products = ProductDbSchema.parse(productsJson);

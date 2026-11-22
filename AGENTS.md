@@ -35,7 +35,7 @@ Run from the repo root:
 - `pnpm lint` / `pnpm lint:fix` — ESLint in both apps
 - `pnpm format` / `pnpm format:check` — Prettier (print width 120, Astro + Tailwind plugins)
 
-There is no test suite yet. Verify changes with `pnpm lint`, `pnpm format:check`, and the relevant build.
+Run `pnpm test:auth` for the dashboard auth browser and HTTP tests. Verify changes with `pnpm lint`, `pnpm format:check`, and the relevant build.
 
 ## Conventions
 

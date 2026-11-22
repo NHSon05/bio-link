@@ -9,6 +9,7 @@
     "build:landing": "pnpm build:runtime && pnpm --filter landing build",
     "build:dashboard": "pnpm --filter dashboard build",
     "build": "pnpm build:landing && pnpm build:dashboard",
+    "test:auth": "pnpm --filter dashboard test:auth",
     "lint": "pnpm -r --if-present lint",
     "lint:fix": "pnpm -r --if-present lint --fix",
     "format": "prettier --write .",

@@ -19,6 +19,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 3. Import and use the generated component. Review the generated files and dependency changes after installation. Preserve existing customizations by leaving the overwrite option off.
 4. Compose feature-specific UI from these primitives. Use native markup for structure, text, form submission, and hidden fields. Use shadcn components for visible controls and patterns such as buttons, inputs, labels, alerts, dialogs, and cards. Avoid hand-built substitutes and use the dashboard tokens in `styles/tokens.css` and `styles/theme.css`.
+5. Keep `components/ui/` for shadcn registry components only. Put app-specific components built from them in `components/` (for example `panel`, `segmented`, `topbar`, `device-frame`, `Editor`).
 
 Use the [shadcn CLI reference](https://ui.shadcn.com/docs/cli) to look up component commands.
 

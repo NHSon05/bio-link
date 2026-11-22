@@ -31,7 +31,7 @@ export async function listSites(db: SupabaseClient) {
     const { data, error } = await db
       .from("sites")
       .select(
-        "slug, title:draft_config->profile->>title, template:draft_config->>template, platform:draft_config->source->>platform, updatedAt:updated_at, site_members(role)",
+        "slug, publishedSlug:published_config->>slug, title:draft_config->profile->>title, template:draft_config->>template, platform:draft_config->source->>platform, updatedAt:updated_at, site_members(role)",
       )
       .order("slug")
       .range(offset, offset + pageSize - 1);
@@ -47,11 +47,15 @@ export async function listSites(db: SupabaseClient) {
   }
 }
 
-export async function readSite(db: SupabaseClient, slug: string): Promise<Site> {
-  const { data, error } = await db.from("sites").select("draft_config").eq("slug", slug).maybeSingle();
+export async function readSite(db: SupabaseClient, slug: string, published = false): Promise<Site> {
+  const { data, error } = await db
+    .from("sites")
+    .select(published ? "config:published_config" : "config:draft_config")
+    .eq("slug", slug)
+    .maybeSingle();
   if (error) throw error;
-  if (!data) throw new SiteApiError(404, "Không tìm thấy slug");
-  return SiteSchema.parse(data.draft_config);
+  if (!data?.config) throw new SiteApiError(404, "Không tìm thấy phiên bản của trang");
+  return SiteSchema.parse(data.config);
 }
 
 export async function saveSite(
