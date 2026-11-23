@@ -6,6 +6,7 @@ import { mkdirSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compiler as Compiler } from "google-closure-compiler";
+import { getNativeImagePath } from "google-closure-compiler/lib/utils.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const out = resolve(here, "../../apps/landing/public/runtime.js");
@@ -19,6 +20,13 @@ const compiler = new Compiler({
   warning_level: "VERBOSE",
   js_output_file: out,
 });
+
+// Bản native không cần Java; Vercel chỉ có Java 11 còn file .jar cần Java 21. Giống cli.js của gói.
+const nativeCompiler = getNativeImagePath();
+if (nativeCompiler) {
+  compiler.JAR_PATH = null;
+  compiler.javaPath = nativeCompiler;
+}
 
 compiler.run((code, stdout, stderr) => {
   if (stderr) process.stderr.write(stderr);
