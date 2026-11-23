@@ -2,13 +2,13 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Trash2 } from "lucide-react";
-import { templates } from "@bio-link/templates";
 import { Panel } from "@/components/panel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TemplatePicker } from "@/components/workspace/template-picker";
 import { useWorkspaceApi, type Member, type Role, type SiteSummary } from "@/lib/workspace-api";
 
 const roles: { value: Role; label: string }[] = [
@@ -89,6 +89,7 @@ const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim
 export function CreateSite({ changed }: { changed: (next?: string) => void }) {
   const api = useWorkspaceApi();
   const { busy, run, alert } = useAction();
+  const [template, setTemplate] = useState("classic");
   return (
     <Panel
       title="Tạo trang mới"
@@ -103,7 +104,7 @@ export function CreateSite({ changed }: { changed: (next?: string) => void }) {
           const created = await run(() =>
             api.createSite({
               slug,
-              template: text(form, "template"),
+              template,
               ...(title && { title }),
               ...(platform && { platform }),
             }),
@@ -111,6 +112,10 @@ export function CreateSite({ changed }: { changed: (next?: string) => void }) {
           if (created) changed(slug);
         })}
       >
+        <div className="grid gap-1.5 sm:col-span-2">
+          <span className="text-sm font-medium">Chọn template</span>
+          <TemplatePicker value={template} onChange={setTemplate} />
+        </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-slug">Slug</Label>
           <Input id="new-slug" name="slug" required pattern="[a-z0-9-]+" maxLength={64} placeholder="fanpage-abc" />
@@ -118,21 +123,6 @@ export function CreateSite({ changed }: { changed: (next?: string) => void }) {
         <div className="grid gap-1.5">
           <Label htmlFor="new-title">Tên trang</Label>
           <Input id="new-title" name="title" maxLength={120} />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="new-template">Template</Label>
-          <Select name="template" defaultValue="classic">
-            <SelectTrigger id="new-template" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.values(templates).map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-platform">Nền tảng</Label>
