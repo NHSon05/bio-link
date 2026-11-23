@@ -166,6 +166,7 @@ Three migrations: `20261120030000_site_backend.sql` (`sites`, `site_admins`, `si
 
 Newest first. One line per finished task: date, task IDs, what changed, how it was verified.
 
+- 2026-11-23 — F3-8 (AD-12): self-service sites. Any signed-in user creates up to 3 sites and is their `owner` (edit, publish, rename, delete, members); new users see a create form instead of "waiting for access"; the admin tab is now "Quản lý trang". Migration `20261124000000_site_owners.sql` (local only). Verified with full `pnpm test:auth` (59 passed, 1 skipped), `tsc`, `pnpm lint`.
 - 2026-11-23 — F5-3, F5-6, F5-7 (workflow written, CI run pending): `.github/workflows/landing.yml` claims the build, builds, syncs to S3, invalidates CloudFront, and reports back. `actionlint` passed. Manual deployment returned HTTP 200 for `/`, `/beat-artist`, `/beat-artist/`, `/beat-artist.json`, and `/runtime.js`. The bucket, distribution, and slug rewrite are ready. Remaining CI setup is in README.
 - 2026-11-23 — F5-1, F5-4: `builds` migration; `POST /api/internal/builds/{id}` and `/cron` for the build job, bearer `BUILD_CALLBACK_TOKEN` only, starting a build absorbs older queued ones. Verified with `pnpm test:auth site-api` (16 passed), `tsc`, `pnpm lint`.
 - 2026-11-23 — Applied the `builds` migration to hosted Supabase and verified `latest_site_build` returned HTTP 200. Configured the GitHub repository for the AWS Free plan deploy credentials and verified the workflow with `actionlint`. The first CI run still needs a public dashboard with the callback routes.

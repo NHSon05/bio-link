@@ -42,7 +42,9 @@ export async function listSites(db: SupabaseClient) {
       ...data.map(({ site_members: members, ...site }) => ({
         ...site,
         template: site.template ?? "classic",
-        canEdit: !!admin || members.some((member) => member.role === "editor"),
+        canEdit: !!admin || members.some((member) => member.role === "owner" || member.role === "editor"),
+        // Đổi slug, xóa và quản lý thành viên.
+        canManage: !!admin || members.some((member) => member.role === "owner"),
       })),
     );
     if (data.length < pageSize) return sites;
@@ -98,7 +100,7 @@ export async function isAdmin(db: SupabaseClient) {
   return !!data;
 }
 
-/** Editor of the site or admin; otherwise 404 (unassigned) or 403 (viewer). */
+/** Owner, editor or admin; otherwise 404 (unassigned) or 403 (viewer). */
 export async function requireEditor(db: SupabaseClient, slug: string) {
   const [admin, { data: site, error }] = await Promise.all([
     isAdmin(db),
@@ -106,7 +108,7 @@ export async function requireEditor(db: SupabaseClient, slug: string) {
   ]);
   if (error) throw error;
   if (!site) throw new SiteApiError(404, "Không tìm thấy slug");
-  if (!admin && !site.site_members.some((member) => member.role === "editor")) {
+  if (!admin && !site.site_members.some((member) => member.role === "owner" || member.role === "editor")) {
     throw new SiteApiError(403, "Không có quyền chỉnh sửa slug");
   }
 }
@@ -161,7 +163,7 @@ export async function deleteSite(actorId: string, slug: string) {
 }
 
 export const RoleSchema = z.enum(["editor", "viewer"]);
-export type Member = { userId: string; email: string; role: z.infer<typeof RoleSchema> };
+export type Member = { userId: string; email: string; role: z.infer<typeof RoleSchema> | "owner" };
 
 export async function listMembers(actorId: string, slug: string): Promise<Member[]> {
   const { data, error } = await siteWriter().rpc("list_site_members", { actor_id: actorId, target_slug: slug });

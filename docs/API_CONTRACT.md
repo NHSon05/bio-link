@@ -12,14 +12,17 @@ These apply to every dashboard endpoint under `/api` unless the endpoint says ot
 
 **Origin check.** A write (`POST`, `PUT`, `PATCH`, `DELETE`) authenticated by cookie must come from the dashboard origin. Otherwise it returns `403`. Bearer requests skip this check.
 
-**Roles.** Roles come from `site_admins` (global) and `site_members` (per site, `editor` or `viewer`).
+**Roles.** Roles come from `site_admins` (global) and `site_members` (per site, `owner`, `editor`, or `viewer`). Any signed-in user can create sites (`ADMIN-1`) and becomes their `owner` (AD-12).
 
-| Actor                    | Read assigned site | Change assigned site | Unassigned site | Admin-only endpoints |
-| ------------------------ | ------------------ | -------------------- | --------------- | -------------------- |
-| Signed in, no assignment | —                  | —                    | `404`           | `403`                |
-| Viewer                   | `200`              | `403`                | `404`           | `403`                |
-| Editor                   | `200`              | `200`                | `404`           | `403`                |
-| Admin                    | `200` (all sites)  | `200` (all sites)    | —               | `200`                |
+| Actor                    | Read assigned site | Change assigned site | Unassigned site | Manage site (`ADMIN-2…3`, `MEM-1…3`) |
+| ------------------------ | ------------------ | -------------------- | --------------- | ------------------------------------ |
+| Signed in, no assignment | —                  | —                    | `404`           | `403`                                |
+| Viewer                   | `200`              | `403`                | `404`           | `403`                                |
+| Editor                   | `200`              | `200`                | `404`           | `403`                                |
+| Owner                    | `200`              | `200`                | `404`           | `200` (own sites)                    |
+| Admin                    | `200` (all sites)  | `200` (all sites)    | —               | `200` (all sites)                    |
+
+Managing returns `403` for anyone who is neither admin nor the site's owner, also for a slug that does not exist.
 
 An unassigned site returns `404`, not `403`, so the API does not reveal which slugs exist.
 
@@ -50,7 +53,8 @@ type SiteSummary = {
   template: string; // "classic" when unset
   platform: string | null;
   updatedAt: string;
-  canEdit: boolean;
+  canEdit: boolean; // owner, editor, or admin
+  canManage: boolean; // owner or admin
   publishedSlug: string | null;
 };
 
@@ -149,15 +153,15 @@ Renders a site with the production templates. Not deployed to the CDN.
 - A `POST` from an origin other than `DASHBOARD_ORIGIN` or the preview server itself → `403`.
 - Every response sends `Cache-Control: no-store`. Click and subscribe events are not sent from preview pages.
 
-## Site administration (admin)
+## Site administration (owner or admin)
 
 ### ADMIN-1 — `POST /api/sites` · Implemented
 
-Creates a site with an empty draft. Nothing is published until `SITE-4`.
+Creates a site with an empty draft. Nothing is published until `SITE-4`. Any signed-in user may call it; a non-admin becomes the site's `owner`.
 
 - Body: `{ "slug": string, "template": string, "title"?: string, "platform"?: string }`
 - `201` `Site` (the new draft). The draft uses the template's default theme, regions, and an empty `blocks` list.
-- `403` non-admin. `409` slug already used by a site or by a redirect in `slug_redirects`. `422` invalid slug, reserved slug, or unknown template.
+- `403` a non-admin who already owns 3 sites. `409` slug already used by a site or by a redirect in `slug_redirects`. `422` invalid slug, reserved slug, or unknown template.
 
 ### ADMIN-2 — `POST /api/sites/{slug}/rename` · Implemented
 
@@ -166,7 +170,7 @@ Changes the slug and keeps the old URL working.
 - Body: `{ "newSlug": string }`
 - `200` `{ "slug": "new-slug", "redirectFrom": "old-slug" }`. Updates `slug` in the row, the draft, and the published config, and inserts a row in `slug_redirects`. Members and versions stay attached to the site.
 - Side effect: queues a build for both the old and new slug (`BUILD-1`, `reason: "rename"`). The deployment serves `/{newSlug}` and a redirect from `/{oldSlug}` (`PUB-4`).
-- `403` non-admin. `404` unknown slug. `409` `newSlug` taken. `422` invalid or reserved slug, or `newSlug` equals the current slug.
+- `403` neither admin nor owner. `404` unknown slug (admin). `409` `newSlug` taken. `422` invalid or reserved slug, or `newSlug` equals the current slug.
 
 ### ADMIN-3 — `DELETE /api/sites/{slug}` · Implemented
 
@@ -175,14 +179,14 @@ Deletes a site, its members, versions, and scores.
 - Body: `{ "confirm": string }`, which must equal `{slug}`.
 - `204`
 - Side effect: queues a build for the deleted slug and its former redirect slugs (`BUILD-1`, `reason: "delete"`). The deployment removes their old files from the CDN.
-- `403` non-admin. `404` unknown slug. `422` missing or wrong `confirm`.
+- `403` neither admin nor owner. `404` unknown slug (admin). `422` missing or wrong `confirm`.
 
-## Members (admin)
+## Members (owner or admin)
 
 ### MEM-1 — `GET /api/sites/{slug}/members` · Implemented
 
-- `200` `{ "userId": string, "email": string, "role": Role }[]`, ordered by email.
-- `403` non-admin. `404` unknown slug.
+- `200` `{ "userId": string, "email": string, "role": "owner" | Role }[]`, ordered by email.
+- `403` neither admin nor owner. `404` unknown slug (admin).
 
 ### MEM-2 — `PUT /api/sites/{slug}/members` · Implemented
 
@@ -190,12 +194,13 @@ Adds a member or changes their role. Idempotent.
 
 - Body: `{ "email": string, "role": Role }`
 - `200` `{ "userId": string, "email": string, "role": Role }`
-- `403` non-admin. `404` unknown slug or no account with that email. `422` invalid email or role.
+- `Role` is `editor` or `viewer`; nobody can grant `owner` here.
+- `403` neither admin nor owner. `404` unknown slug (admin) or no account with that email. `409` an owner tries to change an owner's role (only an admin can). `422` invalid email or role.
 
 ### MEM-3 — `DELETE /api/sites/{slug}/members/{userId}` · Implemented
 
 - `204`, also when the user was not a member.
-- `403` non-admin. `404` unknown slug.
+- `403` neither admin nor owner. `404` unknown slug (admin). `409` an owner tries to remove an owner (only an admin can).
 
 ## Media
 
