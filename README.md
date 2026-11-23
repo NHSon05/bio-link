@@ -33,7 +33,8 @@ Copy each app's `.env.example` to `.env.local`; never commit other `.env*` files
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`       | both      | Secret key in server/build only, never client code |
 | `SUPABASE_PUBLISHABLE_KEY`                  | dashboard | Session key                                        |
 | `DASHBOARD_URL`                             | dashboard | Origin for auth callbacks (default `:3000`)        |
-| `NEXT_PUBLIC_LANDING_URL`                   | dashboard | Preview server origin                              |
+| `NEXT_PUBLIC_LANDING_URL`                   | dashboard | Published landing origin                           |
+| `NEXT_PUBLIC_LANDING_PREVIEW_URL`           | dashboard | Astro preview origin, defaults to the landing URL  |
 | `DASHBOARD_ORIGIN`                          | landing   | Origin allowed to post drafts to `/preview`        |
 | `PUBLIC_BEACON_URL`, `PUBLIC_SUBSCRIBE_URL` | landing   | Optional tracking and subscribe endpoints          |
 
@@ -91,6 +92,7 @@ Run `supabase login`, `supabase link --project-ref <ref>`, and `supabase db push
 - **Protected Vercel Preview:** If `DASHBOARD_URL` points to a protected Preview, add its Protection Bypass for Automation secret as `VERCEL_AUTOMATION_BYPASS_SECRET` in GitHub. The callback still requires `BUILD_CALLBACK_TOKEN`.
 - **Repo variables:** Set `AWS_REGION=ap-southeast-2`, `S3_BUCKET=nhson05-bio-link-landing-01`, and `CLOUDFRONT_DISTRIBUTION_ID=E1YPUA8NYR8DKT` for the existing landing. Set `DASHBOARD_URL` to the HTTPS origin for GitHub callbacks and `PUBLIC_DASHBOARD_URL` to the public HTTPS origin that serves `/api/traffic` without Vercel authentication. The landing embeds only the public origin. `PUBLIC_BEACON_URL` and `PUBLIC_SUBSCRIBE_URL` are optional.
 - **Hosted dashboard:** Set `DASHBOARD_URL` in Vercel to each environment's own HTTPS origin for auth redirects. Add the corresponding `/auth/callback` URL to the Supabase allowlist and set `WORKSPACE_DATA_SOURCE=live` to use assigned sites and their traffic. Set `NEXT_PUBLIC_LANDING_URL` to the CloudFront origin so `/api/traffic` accepts requests from the published landing.
+- **Hosted draft preview:** Deploy `apps/landing` as a separate Vercel project with the build command `pnpm build:preview` and set its `DASHBOARD_ORIGIN` to the dashboard's HTTPS origin. Set `NEXT_PUBLIC_LANDING_PREVIEW_URL` in the dashboard to that Astro project's origin before rebuilding. The preview renderer uses the draft submitted by the dashboard and can run without Supabase credentials.
 - **AWS** The workflow uses the access key of the `bio-link-github-deploy` IAM user. Its `BioLinkLandingDeploy` policy grants `s3:ListBucket`, `s3:PutObject`, and `s3:DeleteObject` for the landing bucket and `cloudfront:CreateInvalidation` for the [landing distribution](https://d17xy1fyfmdcl5.cloudfront.net/). The distribution uses the private S3 bucket and the `bio-link-slug-index` viewer-request function.
 
 ## Claude Code

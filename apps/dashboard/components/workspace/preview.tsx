@@ -82,6 +82,7 @@ export function PreviewScreen({
   const submitted = useRef(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
+  const previewOrigin = process.env.NEXT_PUBLIC_LANDING_PREVIEW_URL || landingUrl;
   useEffect(() => {
     const ctl = new AbortController();
     const timer = setTimeout(async () => {
@@ -91,7 +92,7 @@ export function PreviewScreen({
         // Điều hướng iframe bằng form POST để tài liệu có origin của landing, tài nguyên con tải same-origin (astro dev chặn cross-site).
         const form = document.createElement("form");
         form.method = "POST";
-        form.action = new URL("/preview", landingUrl).href;
+        form.action = new URL("/preview", previewOrigin).href;
         form.target = name;
         form.hidden = true;
         const field = document.createElement("input");
@@ -112,7 +113,7 @@ export function PreviewScreen({
       clearTimeout(timer);
       ctl.abort();
     };
-  }, [api, site, slug, published, landingUrl, name]);
+  }, [api, site, slug, published, previewOrigin, name]);
   const content = (
     <>
       {error ? (
