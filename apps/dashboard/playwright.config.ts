@@ -1,9 +1,11 @@
+import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
 
 const dashboardUrl = "http://127.0.0.1:55300";
 const landingUrl = "http://127.0.0.1:55326";
 const googleUrl = process.env.AUTH_TEST_GOOGLE_URL;
 const channel = process.env.PLAYWRIGHT_CHANNEL;
+const dispatchStub = join(__dirname, "tests/auth/build-dispatch-stub.mjs");
 
 if (!process.env.AUTH_TEST_SUPABASE_URL || !googleUrl) {
   throw new Error("Run pnpm test:auth to start the isolated Supabase stack.");
@@ -31,6 +33,10 @@ export default defineConfig({
         DASHBOARD_URL: dashboardUrl,
         SUPABASE_URL: googleUrl,
         NEXT_PUBLIC_LANDING_URL: landingUrl,
+        BUILD_REPO: "bio-link-test/dispatch-stub",
+        BUILD_HOOK_TOKEN: "test-only",
+        BUILD_CALLBACK_TOKEN: "callback-test-only",
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import="${dispatchStub}"`.trim(),
       },
       url: `${dashboardUrl}/login`,
       reuseExistingServer: false,

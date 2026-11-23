@@ -112,7 +112,7 @@ Publishes the current draft and records a version.
 - Body (optional): `{ "note"?: string }`, trimmed, at most 500 characters.
 - `200` `Site` that was published.
 - `403` viewer. `404` unknown or unassigned slug. `422` note too long.
-- Side effect (Proposed, F5): queues a build for this slug (`BUILD-1`). A failed build hook call does not change the `200` result.
+- Side effect: queues a build for this slug (`BUILD-1`). A failed build hook call does not change the `200` result.
 
 ### SITE-5 — `PUT /api/sites/{slug}` · Implemented, deprecated
 
@@ -136,7 +136,7 @@ Restores an old version by publishing its config as a **new** version. History i
 - Body: `{ "versionId": number, "note"?: string }`
 - `200` `Site` that was published. The new version has `restored_from = versionId`.
 - `403` viewer. `404` unknown slug, unassigned slug, or a version that belongs to another site. `422` invalid body.
-- Side effect (Proposed, F5): queues a build, as in `SITE-4`.
+- Side effect: queues a build with `reason: "restore"`, as in `SITE-4`.
 
 ## Preview (landing app)
 
@@ -166,7 +166,7 @@ Changes the slug and keeps the old URL working.
 
 - Body: `{ "newSlug": string }`
 - `200` `{ "slug": "new-slug", "redirectFrom": "old-slug" }`. Updates `slug` in the row, the draft, and the published config, and inserts a row in `slug_redirects`. Members and versions stay attached to the site.
-- Side effect (Proposed, F5): queues a build that emits `/{newSlug}` and a redirect from `/{oldSlug}` (`PUB-4`).
+- Side effect: queues a build for both the old and new slug (`BUILD-1`, `reason: "rename"`). The deployment serves `/{newSlug}` and a redirect from `/{oldSlug}` (`PUB-4`).
 - `403` non-admin. `404` unknown slug. `409` `newSlug` taken. `422` invalid or reserved slug, or `newSlug` equals the current slug.
 
 ### ADMIN-3 — `DELETE /api/sites/{slug}` · Implemented
@@ -175,7 +175,7 @@ Deletes a site, its members, versions, and scores.
 
 - Body: `{ "confirm": string }`, which must equal `{slug}`.
 - `204`
-- Side effect (Proposed, F5): queues a build that removes `/{slug}` and `/{slug}.json` from the CDN.
+- Side effect: queues a build for the deleted slug and its former redirect slugs (`BUILD-1`, `reason: "delete"`). The deployment removes their old files from the CDN.
 - `403` non-admin. `404` unknown slug. `422` missing or wrong `confirm`.
 
 ## Members (admin)
@@ -211,28 +211,33 @@ Uploads an image for use in the site's config.
 
 ## Builds and deploys
 
-### BUILD-1 — Build hook (outbound) · Proposed
+### BUILD-1 — Build hook (outbound) · Implemented (dashboard)
 
-The dashboard calls the CI build hook after it inserts a `builds` row.
+After a successful publish, restore, rename, or delete, the dashboard queues a build (`queue_build`) and, unless the request was merged, triggers GitHub Actions.
 
-- `POST {BUILD_HOOK_URL}` with header `Authorization: Bearer {BUILD_HOOK_TOKEN}` and body:
+- `POST https://api.github.com/repos/{BUILD_REPO}/dispatches` with `Authorization: Bearer {BUILD_HOOK_TOKEN}` (a fine-grained token with Contents: write on that repo only) and body:
   ```json
-  { "buildId": 42, "reason": "publish", "slugs": ["fanpage-abc"] }
+  { "event_type": "build-landing", "client_payload": { "buildId": 42, "reason": "publish", "slugs": ["fanpage-abc"] } }
   ```
-- `reason` is one of `publish`, `restore`, `rename`, `delete`, `products`, `scores`, `cron`, `manual`. `slugs` is empty for a full build.
-- Several requests within 60 seconds may be merged into one build. A merged build lists all of their slugs.
-- The hook must answer `2xx` within 10 seconds. Otherwise the build stays `queued` and is retried by the next cron run.
+- `reason` is one of `publish`, `restore`, `rename`, `delete`, `products`, `scores`, `cron`, `manual`. `slugs` is empty for a full build. Rename lists both slugs. Delete lists the removed slug and its former redirects.
+- A request within 60 seconds of a still-`queued` build is merged into it and does not call the hook again.
+- The dashboard waits at most 10 seconds for `2xx`. A failed or slow call is logged and leaves the build `queued`. The planned worker can absorb that build on its next run (`BUILD-2`). If the queue itself is unavailable after a site change has committed, the dashboard logs the error and preserves the successful site response.
+- When `BUILD_HOOK_TOKEN` is unset (local dev), builds are queued without calling GitHub. Set `BUILD_REPO` to `owner/repo` when enabling the hook.
 
-### BUILD-2 — `POST /api/internal/builds/{buildId}` · Proposed
+### BUILD-2 — `POST /api/internal/builds/{buildId}` · Implemented
 
 The build job reports progress. Not for browsers.
 
-- Auth: `Authorization: Bearer {BUILD_CALLBACK_TOKEN}` only. Cookies are ignored.
-- Body: `{ "status": "running" | "succeeded" | "failed", "error"?: string, "deployedSlugs"?: string[] }`
-- `200` `{ "id": 42, "status": "succeeded" }`
-- `401` missing or wrong token. `404` unknown build. `409` transition not allowed (only `queued → running → succeeded | failed`). `422` invalid body.
+- Auth: `Authorization: Bearer {BUILD_CALLBACK_TOKEN}` only. Cookies are ignored. Compared in constant time.
+- Body: `{ "status": "running" | "succeeded" | "failed", "error"?: string }`. `error` is at most 2000 characters.
+- `running`: `200` `{ "id": 42, "status": "running", "slugs": string[] }`. Every older `queued` build becomes `superseded` and its slugs are merged in, so the job builds and invalidates the returned `slugs`, not the ones it was dispatched with. Empty means everything.
+- `succeeded` / `failed`: `200` `{ "id": 42, "status": "succeeded" }`.
+- `401` missing or wrong token. `404` unknown build. `409` transition not allowed (only `queued → running → succeeded | failed`; a superseded build answers `409`, and the job exits without deploying). `422` invalid body.
+- `POST /api/internal/builds/cron` (same auth, no body) creates a full `cron` build already `running`, fails `running` builds older than one hour, and answers like `running` above. The workflow calls it on its hourly schedule.
 
-### BUILD-3 — `GET /api/sites/{slug}/builds/latest` · Proposed
+### BUILD-3 — `GET /api/sites/{slug}/builds/latest` · Proposed (design for review)
+
+Any role on the site.
 
 - `200`
   ```json
@@ -246,12 +251,12 @@ The build job reports progress. Not for browsers.
     "liveUpdatedAt": "…"
   }
   ```
-  `liveUpdatedAt` is the `updatedAt` of the config now on the CDN. The editor compares it with the published config to show "đang cập nhật" or "đã lên CDN".
+  `status` is `queued`, `running`, `succeeded`, or `failed`. `liveUpdatedAt` is the `updatedAt` of the newest version published before the last successful build covering this slug started, or `null` if none has. The editor shows "đã lên CDN" when it equals the published config's `updatedAt`, otherwise "đang cập nhật" (or "build lỗi" when `status` is `failed`).
 - `404` unknown or unassigned slug, or no build yet.
 
-### BUILD-4 — `POST /api/builds` · Proposed
+### BUILD-4 — `POST /api/builds` · Proposed (design for review)
 
-Manually queues a build (admin), for example after a failed deploy.
+Manually queues a build (admin), for example after a failed deploy. Same merge and hook rules as `BUILD-1`, with `reason: "manual"`.
 
 - Body: `{ "slugs"?: string[] }`. Empty or missing means a full build.
 - `202` `{ "id": number, "status": "queued" }`
@@ -264,7 +269,7 @@ These are static files produced by `pnpm build:landing` and served by CloudFront
 ### PUB-1 — `GET /{slug}` · Implemented (build), Proposed (headers)
 
 - `200` HTML with OG tags, theme variables, and every block already in the markup.
-- Headers: `Cache-Control: public, max-age=300, s-maxage=31536000`. The deploy invalidates the path.
+- Headers: `Cache-Control: public, max-age=300, s-maxage=31536000`, set on upload to S3. The deploy invalidates `/{slug}`, `/{slug}/*`, and `/{slug}.json` for the build's slugs, or `/*` for a full build.
 - Unknown slug → the CDN's `404` page.
 
 ### PUB-2 — `GET /{slug}.json` · Implemented (build), Proposed (headers)
@@ -456,14 +461,14 @@ n8n reports viral scores. Scores are stored in `block_scores`, never in the draf
 
 ## Environment variables introduced by this contract
 
-| Name                   | App / job          | Purpose                                     |
-| ---------------------- | ------------------ | ------------------------------------------- |
-| `BUILD_HOOK_URL`       | dashboard (server) | CI endpoint called by `BUILD-1`             |
-| `BUILD_HOOK_TOKEN`     | dashboard (server) | Bearer token sent to the build hook         |
-| `BUILD_CALLBACK_TOKEN` | dashboard, CI      | Bearer token for `BUILD-2`                  |
-| `AUTOMATION_TOKEN`     | dashboard, n8n     | Bearer token for `SCORE-1`                  |
-| `LANDING_ORIGIN`       | dashboard (server) | CORS origin for `EVT-1` and `SUB-1`         |
-| `PUBLIC_BEACON_URL`    | landing (build)    | Already read by `SitePage.astro` for EVT-1  |
-| `PUBLIC_SUBSCRIBE_URL` | landing (build)    | Already read by `Subscribe.astro` for SUB-1 |
+| Name                   | App / job          | Purpose                                        |
+| ---------------------- | ------------------ | ---------------------------------------------- |
+| `BUILD_REPO`           | dashboard (server) | GitHub repository (`owner/repo`) for `BUILD-1` |
+| `BUILD_HOOK_TOKEN`     | dashboard (server) | Bearer token sent to the build hook            |
+| `BUILD_CALLBACK_TOKEN` | dashboard, CI      | Bearer token for `BUILD-2`                     |
+| `AUTOMATION_TOKEN`     | dashboard, n8n     | Bearer token for `SCORE-1`                     |
+| `LANDING_ORIGIN`       | dashboard (server) | CORS origin for `EVT-1` and `SUB-1`            |
+| `PUBLIC_BEACON_URL`    | landing (build)    | Already read by `SitePage.astro` for EVT-1     |
+| `PUBLIC_SUBSCRIBE_URL` | landing (build)    | Already read by `Subscribe.astro` for SUB-1    |
 
 Keep tokens server-side only and add placeholders to `apps/dashboard/.env.example` when the endpoint ships.

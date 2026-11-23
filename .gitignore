@@ -11,3 +11,4 @@ apps/landing/public/runtime.js
 
 # Kết quả chạy test của script trong skill
 .coverage
+.vercel

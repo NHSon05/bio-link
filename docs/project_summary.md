@@ -117,7 +117,7 @@ bio-link/
 | F2  | Editor: draft, publish, versions, preview | Mostly done   | Contract tests and `ME-1` done; missing author emails in history (F2-10) and the `SITE-5` decision (F2-11)                                                        |
 | F3  | Site and access management                | Done          | Admin tab: create, rename (with redirect page), delete, members. Build side effects wait for F5                                                                   |
 | F4  | Media uploads                             | Mostly done   | Upload → WebP in the `media` bucket; avatar and cover fields. Block thumbnails have no field yet                                                                  |
-| F5  | Build and deploy pipeline                 | Not started   | Local builds work; no CI or AWS deploy                                                                                                                            |
+| F5  | Build and deploy pipeline                 | In progress   | `builds` queue, GitHub dispatch, and the build job's callback API work locally; workflow written but not run; no status badge yet                                 |
 | F6  | Products and affiliate links              | Per-site CRUD | Site drafts and published configs hold the catalog. Legacy shop blocks use `packages/templates/products.json`.                                                    |
 | F7  | Click tracking and analytics              | Daily totals  | The public runtime records views and tracked clicks. Home shows daily totals and click rate for the selected site.                                                |
 | F8  | Subscribe endpoint                        | Client only   | Form posts to `PUBLIC_SUBSCRIBE_URL` when set                                                                                                                     |
@@ -166,6 +166,9 @@ Three migrations: `20261120030000_site_backend.sql` (`sites`, `site_admins`, `si
 
 Newest first. One line per finished task: date, task IDs, what changed, how it was verified.
 
+- 2026-11-23 — F5-3, F5-6, F5-7 (workflow written, CI run pending): `.github/workflows/landing.yml` claims the build, builds, syncs to S3, invalidates CloudFront, and reports back. `actionlint` passed. Manual deployment returned HTTP 200 for `/`, `/beat-artist`, `/beat-artist/`, `/beat-artist.json`, and `/runtime.js`. The bucket, distribution, and slug rewrite are ready. Remaining CI setup is in README.
+- 2026-11-23 — F5-1, F5-4: `builds` migration; `POST /api/internal/builds/{id}` and `/cron` for the build job, bearer `BUILD_CALLBACK_TOKEN` only, starting a build absorbs older queued ones. Verified with `pnpm test:auth site-api` (16 passed), `tsc`, `pnpm lint`.
+- 2026-11-23 — Applied the `builds` migration to hosted Supabase and verified `latest_site_build` returned HTTP 200. Configured the GitHub repository for the AWS Free plan deploy credentials and verified the workflow with `actionlint`. The first CI run still needs a public dashboard with the callback routes.
 - 2026-11-22 — F2-8, F2-9, F3-1…F3-7, F4-1…F4-3, F4-5 (F4-4 partly): `GET /api/me`, admin site and member APIs with `slug_redirects`, static redirect pages in the landing build, `media` uploads converted to WebP, admin tab and avatar/cover upload in the editor; malformed JSON now returns `400` per contract. Verified with `pnpm test:auth` (56 passed, 1 skipped), mock spec, `pnpm lint`, and code-reviewer approval.
 
 - 2026-11-20 — Docs: compacted README (about half the length; details now link to docs). Verified with `pnpm format:check`.

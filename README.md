@@ -82,6 +82,16 @@ Run `supabase login`, `supabase link --project-ref <ref>`, and `supabase db push
 
 **Google sign-in:** create a Google **Web application** OAuth client with the dashboard origin and the Supabase callback (`https://<ref>.supabase.co/auth/v1/callback`), enter its ID and secret in **Supabase → Sign In / Providers → Google**, and under **URL Configuration** set the Site URL to the dashboard origin and allow `<dashboard>/auth/callback`. With sign-ups disabled, Google works only for existing users. See [Supabase's Google guide](https://supabase.com/docs/guides/auth/social-sign-in/auth-google).
 
+## Landing deploy
+
+`.github/workflows/landing.yml` builds the landing and syncs `apps/landing/dist/client/` to S3, then invalidates CloudFront. It runs when the dashboard dispatches `build-landing` after a publish, every hour, or by hand (**Actions → Landing deploy → Run workflow**, a full build). It reports progress to `/api/internal/builds`, so the dashboard must be reachable from GitHub.
+
+- **Dashboard env:** `BUILD_REPO=NHSon05/bio-link`, `BUILD_HOOK_TOKEN` (fine-grained token on this repo, Contents: read and write), `BUILD_CALLBACK_TOKEN` (`openssl rand -hex 32`).
+- **Repo secrets:** `BUILD_CALLBACK_TOKEN` (same value), `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`.
+- **Protected Vercel Preview:** If `DASHBOARD_URL` points to a protected Preview, add its Protection Bypass for Automation secret as `VERCEL_AUTOMATION_BYPASS_SECRET` in GitHub. The callback still requires `BUILD_CALLBACK_TOKEN`.
+- **Repo variables:** Set `AWS_REGION=ap-southeast-2`, `S3_BUCKET=nhson05-bio-link-landing-01`, and `CLOUDFRONT_DISTRIBUTION_ID=E1YPUA8NYR8DKT` for the existing landing. Also set `DASHBOARD_URL` to the public HTTPS origin. `PUBLIC_BEACON_URL` and `PUBLIC_SUBSCRIBE_URL` are optional.
+- **AWS** The workflow uses the access key of the `bio-link-github-deploy` IAM user. Its `BioLinkLandingDeploy` policy grants `s3:ListBucket`, `s3:PutObject`, and `s3:DeleteObject` for the landing bucket and `cloudfront:CreateInvalidation` for the [landing distribution](https://d17xy1fyfmdcl5.cloudfront.net/). The distribution uses the private S3 bucket and the `bio-link-slug-index` viewer-request function.
+
 ## Claude Code
 
 `CLAUDE.md` adds orchestration rules for the subagents in `.claude/agents/`; see [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md). After each verified task, update `docs/plan.md` and `docs/project_summary.md`. `.claude/` is git-ignored.

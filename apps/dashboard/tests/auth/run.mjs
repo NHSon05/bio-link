@@ -62,6 +62,7 @@ try {
       ...env,
       AUTH_TEST_PROJECT_ID: projectId,
       AUTH_TEST_LANDING_DIST: join(workdir, "landing-dist"),
+      AUTH_TEST_BUILD_DISPATCH_LOG: join(workdir, "build-dispatch.jsonl"),
       AUTH_TEST_MAILPIT_URL: "http://127.0.0.1:55324",
       AUTH_TEST_GOOGLE_URL: "http://127.0.0.1:55325",
       AUTH_TEST_SUPABASE_URL: url,

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type APIResponse } from "@playwright/test";
 import { SiteSchema, type Site } from "@bio-link/schema";
 import sharp from "sharp";
@@ -89,6 +90,140 @@ async function firstVersion(request: APIRequestContext, s: Site) {
   const response = await request.get(`${path(s)}/versions`, { headers: await as("admin") });
   return (await response.json()).at(-1).id as number;
 }
+
+test("BUILD-1 queues successful publishing changes even if GitHub fails", async ({ request }) => {
+  const buildSite = site("api-build");
+  const renamed = site("api-build-renamed").slug;
+  const headers = await as("admin");
+  const logPath = process.env.AUTH_TEST_BUILD_DISPATCH_LOG!;
+  const dispatches = () => (existsSync(logPath) ? readFileSync(logPath, "utf8").trim().split("\n") : []);
+  const builds = () =>
+    JSON.parse(
+      testSql(
+        `select coalesce(json_agg(b order by id), '[]') from (
+           select id, status, reason, slugs, requested_by from public.builds where :'slug' = any(slugs)
+         ) b;`,
+        { slug: buildSite.slug },
+      ),
+    ) as { id: number; slugs: string[]; status: string; reason: string; requested_by: string }[];
+
+  // Mô phỏng hết cửa sổ gộp mà không phải chờ 60 giây.
+  const expireMergeWindow = () =>
+    testSql("update public.builds set requested_at = now() - interval '61 seconds' where status = 'queued';");
+  expireMergeWindow();
+  const attemptsBefore = dispatches().length;
+  expect((await request.post("/api/sites", { headers, data: { ...buildSite, template: "classic" } })).status()).toBe(
+    201,
+  );
+  expect((await request.patch(path(buildSite), { headers, data: buildSite })).status()).toBe(200);
+  await expectError(await request.post(path(buildSite), { headers: await as("viewer") }), 404);
+  expect(builds()).toEqual([]);
+  expect(dispatches()).toHaveLength(attemptsBefore);
+
+  expect((await request.post(path(buildSite), { headers })).status()).toBe(200);
+  expect((await request.get(path(buildSite) + "?revision=published", { headers })).status()).toBe(200);
+  expect(builds()).toEqual([
+    {
+      id: expect.any(Number),
+      status: "queued",
+      reason: "publish",
+      slugs: [buildSite.slug],
+      requested_by: users.get("admin")!.id,
+    },
+  ]);
+  const [{ id }] = builds();
+  expect(dispatches()).toHaveLength(attemptsBefore + 1);
+  expect(JSON.parse(dispatches().at(-1)!)).toEqual({
+    method: "POST",
+    body: { event_type: "build-landing", client_payload: { buildId: id, reason: "publish", slugs: [buildSite.slug] } },
+  });
+
+  const versionId = await firstVersion(request, buildSite);
+  expireMergeWindow();
+  expect((await request.put(path(buildSite), { headers, data: buildSite })).status()).toBe(200);
+  expect(builds().at(-1)).toMatchObject({ reason: "publish", status: "queued", slugs: [buildSite.slug] });
+  expect(dispatches()).toHaveLength(attemptsBefore + 2);
+
+  expireMergeWindow();
+  expect((await request.post(path(buildSite) + "/versions", { headers, data: { versionId } })).status()).toBe(200);
+  const restored = builds().at(-1);
+  expect(restored).toMatchObject({ reason: "restore", status: "queued", slugs: [buildSite.slug] });
+  expect(dispatches()).toHaveLength(attemptsBefore + 3);
+
+  expect((await request.post(path(buildSite) + "/rename", { headers, data: { newSlug: renamed } })).status()).toBe(200);
+  expect(builds()).toHaveLength(3);
+  expect(builds().at(-1)).toMatchObject({
+    id: restored?.id,
+    status: "queued",
+    slugs: [buildSite.slug, renamed].sort(),
+  });
+  expect(dispatches()).toHaveLength(attemptsBefore + 3);
+
+  expireMergeWindow();
+  expect((await request.delete(path(renamed), { headers, data: { confirm: renamed } })).status()).toBe(204);
+  expect(builds()).toHaveLength(4);
+  expect(builds().at(-1)).toMatchObject({ status: "queued", reason: "delete", slugs: [renamed, buildSite.slug] });
+  expect(dispatches()).toHaveLength(attemptsBefore + 4);
+});
+
+test("BUILD-2 lets only the build job move a build through its states", async ({ request }) => {
+  const url = (id: number | string) => `/api/internal/builds/${id}`;
+  const job = { Authorization: "Bearer callback-test-only" };
+  const queue = (slugs: string) =>
+    Number(
+      testSql(
+        `with b as (insert into public.builds (reason, slugs) values ('manual', :'slugs') returning id) select id from b;`,
+        {
+          slugs,
+        },
+      ),
+    );
+  const status = (id: number) => testSql(`select status from public.builds where id = ${id};`).trim();
+  const older = queue(`{build2-old-${suffix}}`);
+  const id = queue(`{build2-${suffix}}`);
+
+  // Một phiên admin hợp lệ vẫn không phải token build.
+  const attempts: Record<string, string>[] = [{}, { Authorization: "Bearer wrong" }, await as("admin")];
+  for (const headers of attempts) {
+    await expectError(await request.post(url(id), { headers, data: { status: "running" } }), 401);
+  }
+  await expectError(await request.post("/api/internal/builds/cron", { headers: {} }), 401);
+  expect(status(id)).toBe("queued");
+
+  await expectError(await request.post(url(id), { headers: job, data: { status: "done" } }), 422);
+  await expectError(await request.post(url(id), { headers: job, data: Buffer.from("{not json") }), 400);
+  for (const missing of ["999999999", "abc", "0"]) {
+    await expectError(await request.post(url(missing), { headers: job, data: { status: "running" } }), 404);
+  }
+  await expectError(await request.post(url(id), { headers: job, data: { status: "succeeded" } }), 409);
+
+  const started = await request.post(url(id), { headers: job, data: { status: "running" } });
+  expect(started.status()).toBe(200);
+  expect(await started.json()).toEqual({
+    id,
+    status: "running",
+    slugs: expect.arrayContaining([`build2-${suffix}`, `build2-old-${suffix}`]),
+  });
+  expect(status(older)).toBe("superseded");
+  await expectError(await request.post(url(older), { headers: job, data: { status: "running" } }), 409);
+  await expectError(await request.post(url(id), { headers: job, data: { status: "running" } }), 409);
+
+  const finished = await request.post(url(id), { headers: job, data: { status: "failed", error: "x".repeat(2000) } });
+  expect(await finished.json()).toEqual({ id, status: "failed" });
+  await expectError(await request.post(url(id), { headers: job, data: { status: "succeeded" } }), 409);
+  await expectError(
+    await request.post(url(queue("{}")), { headers: job, data: { status: "running", error: "x".repeat(2001) } }),
+    422,
+  );
+
+  const cron = await request.post("/api/internal/builds/cron", { headers: job });
+  expect(cron.status()).toBe(200);
+  const cronBuild = await cron.json();
+  expect(cronBuild).toEqual({ id: expect.any(Number), status: "running", slugs: [] });
+  expect(await (await request.post(url(cronBuild.id), { headers: job, data: { status: "succeeded" } })).json()).toEqual(
+    { id: cronBuild.id, status: "succeeded" },
+  );
+});
 
 test("ME-1 returns the signed-in user and admin flag", async ({ request }) => {
   await expectError(await request.get("/api/me"), 401);
