@@ -84,12 +84,13 @@ Run `supabase login`, `supabase link --project-ref <ref>`, and `supabase db push
 
 ## Landing deploy
 
-`.github/workflows/landing.yml` builds the landing and syncs `apps/landing/dist/client/` to S3, then invalidates CloudFront. It runs when the dashboard dispatches `build-landing` after a publish, every hour, or by hand (**Actions → Landing deploy → Run workflow**, a full build). It reports progress to `/api/internal/builds`, so the dashboard must be reachable from GitHub.
+`.github/workflows/landing.yml` builds the landing and syncs `apps/landing/dist/client/` to S3, then invalidates CloudFront. It runs when the dashboard dispatches `build-landing` after a publish, every hour, or by hand (**Actions → Landing deploy → Run workflow**, a full build). A manual run uploads every object to refresh its cache metadata before removing stale files. The workflow reports progress to `/api/internal/builds`.
 
 - **Dashboard env:** `BUILD_REPO=NHSon05/bio-link`, `BUILD_HOOK_TOKEN` (fine-grained token on this repo, Contents: read and write), `BUILD_CALLBACK_TOKEN` (`openssl rand -hex 32`).
 - **Repo secrets:** `BUILD_CALLBACK_TOKEN` (same value), `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`.
 - **Protected Vercel Preview:** If `DASHBOARD_URL` points to a protected Preview, add its Protection Bypass for Automation secret as `VERCEL_AUTOMATION_BYPASS_SECRET` in GitHub. The callback still requires `BUILD_CALLBACK_TOKEN`.
-- **Repo variables:** Set `AWS_REGION=ap-southeast-2`, `S3_BUCKET=nhson05-bio-link-landing-01`, and `CLOUDFRONT_DISTRIBUTION_ID=E1YPUA8NYR8DKT` for the existing landing. Also set `DASHBOARD_URL` to the public HTTPS origin. `PUBLIC_BEACON_URL` and `PUBLIC_SUBSCRIBE_URL` are optional.
+- **Repo variables:** Set `AWS_REGION=ap-southeast-2`, `S3_BUCKET=nhson05-bio-link-landing-01`, and `CLOUDFRONT_DISTRIBUTION_ID=E1YPUA8NYR8DKT` for the existing landing. Set `DASHBOARD_URL` to the HTTPS origin for GitHub callbacks and `PUBLIC_DASHBOARD_URL` to the public HTTPS origin that serves `/api/traffic` without Vercel authentication. The landing embeds only the public origin. `PUBLIC_BEACON_URL` and `PUBLIC_SUBSCRIBE_URL` are optional.
+- **Hosted dashboard:** Set `DASHBOARD_URL` in Vercel to each environment's own HTTPS origin for auth redirects. Add the corresponding `/auth/callback` URL to the Supabase allowlist and set `WORKSPACE_DATA_SOURCE=live` to use assigned sites and their traffic. Set `NEXT_PUBLIC_LANDING_URL` to the CloudFront origin so `/api/traffic` accepts requests from the published landing.
 - **AWS** The workflow uses the access key of the `bio-link-github-deploy` IAM user. Its `BioLinkLandingDeploy` policy grants `s3:ListBucket`, `s3:PutObject`, and `s3:DeleteObject` for the landing bucket and `cloudfront:CreateInvalidation` for the [landing distribution](https://d17xy1fyfmdcl5.cloudfront.net/). The distribution uses the private S3 bucket and the `bio-link-slug-index` viewer-request function.
 
 ## Claude Code

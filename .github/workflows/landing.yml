@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 30
     env:
       DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+      PUBLIC_DASHBOARD_URL: ${{ vars.PUBLIC_DASHBOARD_URL }}
       CALLBACK_TOKEN: ${{ secrets.BUILD_CALLBACK_TOKEN }}
     steps:
       - name: Nhận build từ dashboard
@@ -33,6 +34,10 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -euo pipefail
+          if [[ "$DASHBOARD_URL" != https://* || "$PUBLIC_DASHBOARD_URL" != https://* ]]; then
+            echo "::error::Cần cấu hình URL HTTPS cho DASHBOARD_URL (callback) và PUBLIC_DASHBOARD_URL (landing)."
+            exit 1
+          fi
           if [ "$EVENT" = repository_dispatch ]; then
             [[ "$PAYLOAD_ID" =~ ^[1-9][0-9]{0,15}$ ]] || { echo "::error::buildId không hợp lệ"; exit 1; }
             url="$DASHBOARD_URL/api/internal/builds/$PAYLOAD_ID"
@@ -74,8 +79,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          DASHBOARD_ORIGIN: ${{ vars.DASHBOARD_URL }}
-          PUBLIC_DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+          DASHBOARD_ORIGIN: ${{ vars.PUBLIC_DASHBOARD_URL }}
           PUBLIC_BEACON_URL: ${{ vars.PUBLIC_BEACON_URL }}
           PUBLIC_SUBSCRIBE_URL: ${{ vars.PUBLIC_SUBSCRIBE_URL }}
         run: |
@@ -99,14 +103,23 @@ jobs:
           BUCKET: ${{ vars.S3_BUCKET }}
           DISTRIBUTION: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
           PATHS: ${{ steps.claim.outputs.paths }}
+          EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
           out=apps/landing/dist/client
-          # HTML và asset: CDN giữ lâu, deploy tự invalidate (PUB-1). --delete gỡ trang đã xóa.
-          aws s3 sync "$out" "s3://$BUCKET" --delete --exclude "*.json" \
+          destination="s3://$BUCKET"
+          upload() {
+            # Khi chạy tay, ghi lại Cache-Control cả cho object mà sync sẽ bỏ qua.
+            if [ "$EVENT" = workflow_dispatch ]; then
+              aws s3 cp "$out" "$destination" --recursive "$@"
+            fi
+            aws s3 sync "$out" "$destination" --delete "$@"
+          }
+          # HTML và asset: CDN giữ lâu, deploy tự invalidate (PUB-1).
+          upload --exclude "*.json" \
             --cache-control "public, max-age=300, s-maxage=31536000"
           # JSON xếp hạng: TTL ngắn (PUB-2).
-          aws s3 sync "$out" "s3://$BUCKET" --delete --exclude "*" --include "*.json" \
+          upload --exclude "*" --include "*.json" \
             --content-type application/json --cache-control "public, max-age=60, s-maxage=300"
           read -ra paths <<< "$PATHS"
           aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" --paths "${paths[@]}"
