@@ -2,10 +2,11 @@ import { z } from "zod";
 import { siteWriter } from "@/lib/supabase";
 
 const event = z.object({
+  // "username/slug" (AD-13); trang chuyển hướng không gửi sự kiện.
   slug: z
     .string()
     .max(160)
-    .regex(/^[a-z0-9-]+$/),
+    .regex(/^[a-z0-9-]+\/[a-z0-9-]+$/),
   kind: z.enum(["view", "click"]),
 });
 

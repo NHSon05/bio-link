@@ -80,11 +80,23 @@ Returns who is signed in so the dashboard can hide actions the user cannot perfo
 
 - `200`
   ```json
-  { "userId": "uuid", "email": "a@b.vn", "isAdmin": false }
+  { "userId": "uuid", "email": "a@b.vn", "isAdmin": false, "username": "lan" }
   ```
+  `username` is `null` until the user claims one (`ME-2`).
+- `401` without a session.
+
+### ME-2 — `POST /api/me/username` · Implemented
+
+Claims the user's username, the first segment of every site URL `/{username}/{slug}` (AD-13). It can be set once and never changed, because changing it would break every shared link.
+
+- Body: `{ "username": string }` — 2–32 characters `a-z`, `0-9`, `-`, not starting with `-`.
+- `201` `{ "username": "lan" }`.
+- `409` the user already has a username, or another user took it. `422` invalid or reserved (`admin`, `api`, `preview`, `sitemap`, `assets`, `img`, `static`, `www`, `app`, `dashboard`, `runtime`, `favicon`).
 - `401` without a session.
 
 ## Sites (editor)
+
+A site's `slug` is its full path `username/page` (AD-13), for example `lan/page-abc`. Two users can each have `page-abc`; `{slug}` in the routes below is that full path, so `/api/sites/lan/page-abc`.
 
 ### SITE-1 — `GET /api/sites` · Implemented
 
@@ -159,18 +171,18 @@ Renders a site with the production templates. Not deployed to the CDN.
 
 Creates a site with an empty draft. Nothing is published until `SITE-4`. Any signed-in user may call it; a non-admin becomes the site's `owner`.
 
-- Body: `{ "slug": string, "template": string, "title"?: string, "platform"?: string }`
-- `201` `Site` (the new draft). The draft uses the template's default theme, regions, and an empty `blocks` list.
-- `403` a non-admin who already owns 3 sites. `409` slug already used by a site or by a redirect in `slug_redirects`. `422` invalid slug, reserved slug, or unknown template.
+- Body: `{ "slug": string, "template": string, "title"?: string, "platform"?: string, "namespace"?: string }`. `slug` is the page part only; the site is created at `{namespace}/{slug}`, where `namespace` defaults to the caller's username.
+- `201` `Site` (the new draft, `slug` is the full path). The draft uses the template's default theme, regions, and an empty `blocks` list.
+- `403` a non-admin who already owns 3 sites, or passes a `namespace` other than their own. `409` the caller has no username yet (`ME-2`), or the path is already used by a site or by a redirect in `slug_redirects`. `422` invalid slug or namespace, or unknown template.
 
 ### ADMIN-2 — `POST /api/sites/{slug}/rename` · Implemented
 
 Changes the slug and keeps the old URL working.
 
-- Body: `{ "newSlug": string }`
-- `200` `{ "slug": "new-slug", "redirectFrom": "old-slug" }`. Updates `slug` in the row, the draft, and the published config, and inserts a row in `slug_redirects`. Members and versions stay attached to the site.
+- Body: `{ "newSlug": string }` — the page part only; the site stays under the same username.
+- `200` `{ "slug": "lan/new-slug", "redirectFrom": "lan/old-slug" }`. Updates `slug` in the row, the draft, and the published config, and inserts a row in `slug_redirects`. Members and versions stay attached to the site.
 - Side effect: queues a build for both the old and new slug (`BUILD-1`, `reason: "rename"`). The deployment serves `/{newSlug}` and a redirect from `/{oldSlug}` (`PUB-4`).
-- `403` neither admin nor owner. `404` unknown slug (admin). `409` `newSlug` taken. `422` invalid or reserved slug, or `newSlug` equals the current slug.
+- `403` neither admin nor owner. `404` unknown slug (admin). `409` `newSlug` taken. `422` invalid slug, or `newSlug` equals the current slug.
 
 ### ADMIN-3 — `DELETE /api/sites/{slug}` · Implemented
 
@@ -271,6 +283,8 @@ Manually queues a build, for example after a failed deploy. Admins can build any
 
 These are static files produced by `pnpm build:landing` and served by CloudFront. No auth.
 
+Public URLs are `/{username}/{slug}` (AD-13); `{slug}` below is that full path.
+
 ### PUB-1 — `GET /{slug}` · Implemented (build), Proposed (headers)
 
 - `200` HTML with OG tags, theme variables, and every block already in the markup.
@@ -284,7 +298,7 @@ Ranking data for the runtime. Contains block ids only; the runtime reorders bloc
 - `200`
   ```json
   {
-    "slug": "fanpage-abc",
+    "slug": "admin/fanpage-abc",
     "updatedAt": "2026-11-19T09:00:00Z",
     "order": { "hero": ["v1"], "main": ["p1", "c1"], "footer": ["l1"] }
   }
@@ -297,6 +311,8 @@ Ranking data for the runtime. Contains block ids only; the runtime reorders bloc
 Lists `/{slug}` for every published site, with `<lastmod>` from `updatedAt`. Excludes `/preview` and redirected slugs.
 
 ### PUB-4 — `GET /{oldSlug}` after a rename · Implemented (static page), Proposed (CDN 301)
+
+Sites created before AD-13 moved from `/{slug}` to `/admin/{slug}`; their old one-segment paths are redirects too.
 
 Returns a `301` to `/{newSlug}` (CloudFront function or S3 redirect rule), keeping the query string so UTM parameters survive. If the CDN cannot return a real redirect, serve a static page with `<meta http-equiv="refresh">` and a canonical link.
 

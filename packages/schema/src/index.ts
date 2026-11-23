@@ -118,7 +118,8 @@ const RegionLayoutSchema = z.object({
 });
 
 export const SiteSchema = z.object({
-  slug: z.string().regex(/^[a-z0-9-]+$/, "slug chỉ gồm a-z, 0-9, -"),
+  // Đường dẫn công khai "tên-người-dùng/tên-trang" (AD-13).
+  slug: z.string().regex(/^[a-z0-9][a-z0-9-]*\/[a-z0-9-]+$/, "slug có dạng tên-người-dùng/tên-trang (a-z, 0-9, -)"),
   source: z.object({ platform: z.string(), pageId: z.string() }).optional(),
   template: z.string().default("classic"),
   theme: ThemeSchema.default({}),

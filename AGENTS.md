@@ -7,7 +7,7 @@ Shared instructions for coding agents (Codex reads this file; `CLAUDE.md` import
 pnpm monorepo (`pnpm-workspace.yaml`: `apps/*`, `packages/*`).
 
 - `apps/dashboard` — Next.js 16 (App Router) editor. Saves drafts, publishes, and keeps version history in Supabase. API routes under `app/api/sites`; auth/session refresh in `proxy.ts`; Supabase access in `lib/`.
-- `apps/landing` — Astro. Reads published site configs at build time and emits static HTML + ranking JSON to `dist/client/`. `src/pages/[slug].astro` renders public pages; `preview.astro` is the internal server-side preview used by the dashboard.
+- `apps/landing` — Astro. Reads published site configs at build time and emits static HTML + ranking JSON to `dist/client/`. `src/pages/[...slug].astro` renders public pages at `/{username}/{slug}` (plus redirect pages); `preview.astro` is the internal server-side preview used by the dashboard.
 - `packages/schema` (`@bio-link/schema`) — Zod schema for site JSON (themes, regions, block types, layouts). Shared source of truth for both apps; change it first when adding a block type or field.
 - `packages/templates` (`@bio-link/templates`) — template manifests (`<id>/template.json`), registered in `index.ts`.
 - Design systems are per app. The dashboard follows the [shadcn/ui component rules](apps/dashboard/AGENTS.md#dashboard-ui-components) and uses tokens from `apps/dashboard/styles/tokens.css` and `theme.css`. Landing uses its own CSS in `src/styles/page.css` and `hub.css` with `--lb-*` variables under `.lb-root`.

@@ -51,9 +51,10 @@ export function mockWorkspaceApi(userId: string): WorkspaceApi {
     },
     async me(signal) {
       signal.throwIfAborted();
-      return { userId, email: null, isAdmin: false };
+      return { userId, email: null, isAdmin: false, username: null };
     },
     upload: unavailable,
+    claimUsername: unavailable,
     createSite: unavailable,
     renameSite: unavailable,
     deleteSite: unavailable,

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TemplatePicker } from "@/components/workspace/template-picker";
-import { useWorkspaceApi, type Member, type Role, type SiteSummary } from "@/lib/workspace-api";
+import { useWorkspaceApi, type Me, type Member, type Role, type SiteSummary } from "@/lib/workspace-api";
 
 const roles: { value: Role; label: string }[] = [
   { value: "editor", label: "Biên tập" },
@@ -86,7 +86,59 @@ function submit(handler: (form: FormData, element: HTMLFormElement) => void) {
 
 const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
 
+/** Bước 1 nếu chưa có tên người dùng, rồi form tạo trang trong /{username}/. */
 export function CreateSite({ changed }: { changed: (next?: string) => void }) {
+  const api = useWorkspaceApi();
+  const [me, setMe] = useState<Me | null>(null);
+  useEffect(() => {
+    const ctl = new AbortController();
+    api
+      .me(ctl.signal)
+      .then(setMe)
+      .catch(() => {});
+    return () => ctl.abort();
+  }, [api]);
+  if (!me) return null;
+  if (!me.username) return <ClaimUsername claimed={(username) => setMe({ ...me, username })} />;
+  return <NewSiteForm username={me.username} changed={changed} />;
+}
+
+function ClaimUsername({ claimed }: { claimed: (username: string) => void }) {
+  const api = useWorkspaceApi();
+  const { busy, run, alert } = useAction();
+  return (
+    <Panel
+      title="Chọn tên người dùng"
+      hint="Là phần đầu của mọi link trang bạn: /tên-người-dùng/tên-trang. Không đổi được sau khi chọn."
+    >
+      <form
+        className="grid gap-3"
+        onSubmit={submit(async (form) => {
+          const username = text(form, "username");
+          if (await run(() => api.claimUsername(username))) claimed(username);
+        })}
+      >
+        <div className="grid max-w-sm gap-1.5">
+          <Label htmlFor="username">Tên người dùng</Label>
+          <Input
+            id="username"
+            name="username"
+            required
+            pattern="[a-z0-9][a-z0-9\-]{1,31}"
+            maxLength={32}
+            placeholder="ten-cua-ban"
+          />
+        </div>
+        {alert}
+        <Button className="w-fit" disabled={busy}>
+          Lưu tên người dùng
+        </Button>
+      </form>
+    </Panel>
+  );
+}
+
+function NewSiteForm({ username, changed }: { username: string; changed: (next?: string) => void }) {
   const api = useWorkspaceApi();
   const { busy, run, alert } = useAction();
   const [template, setTemplate] = useState("classic");
@@ -109,7 +161,7 @@ export function CreateSite({ changed }: { changed: (next?: string) => void }) {
               ...(platform && { platform }),
             }),
           );
-          if (created) changed(slug);
+          if (created) changed(`${username}/${slug}`);
         })}
       >
         <div className="grid gap-1.5 sm:col-span-2">
@@ -118,7 +170,10 @@ export function CreateSite({ changed }: { changed: (next?: string) => void }) {
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-slug">Slug</Label>
-          <Input id="new-slug" name="slug" required pattern="[a-z0-9-]+" maxLength={64} placeholder="fanpage-abc" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground">/{username}/</span>
+            <Input id="new-slug" name="slug" required pattern="[a-z0-9\-]+" maxLength={64} placeholder="fanpage-abc" />
+          </div>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-title">Tên trang</Label>
@@ -236,6 +291,7 @@ type SiteAction = { slug: string; locked: boolean; changed: (next?: string, prev
 
 function RenameSite({ slug, locked, changed }: SiteAction) {
   const api = useWorkspaceApi();
+  const namespace = slug.split("/")[0];
   const { busy, run, alert } = useAction();
   return (
     <Panel title="Đổi slug">
@@ -243,7 +299,8 @@ function RenameSite({ slug, locked, changed }: SiteAction) {
         className="grid gap-3"
         onSubmit={submit(async (form) => {
           const newSlug = text(form, "newSlug");
-          if (await run(() => api.renameSite(slug, newSlug))) changed(newSlug, slug);
+          // Trang giữ nguyên không gian tên người dùng; chỉ đổi phần sau.
+          if (await run(() => api.renameSite(slug, newSlug))) changed(`${namespace}/${newSlug}`, slug);
         })}
       >
         <Alert>
@@ -254,7 +311,10 @@ function RenameSite({ slug, locked, changed }: SiteAction) {
         </Alert>
         <div className="grid gap-1.5">
           <Label htmlFor="rename-slug">Slug mới</Label>
-          <Input id="rename-slug" name="newSlug" required pattern="[a-z0-9-]+" maxLength={64} />
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground">/{namespace}/</span>
+            <Input id="rename-slug" name="newSlug" required pattern="[a-z0-9\-]+" maxLength={64} />
+          </div>
         </div>
         {alert}
         <Button className="w-fit" disabled={busy || locked}>

@@ -16,7 +16,8 @@ export type SiteSummary = {
   publishedSlug: string | null;
 };
 
-export type Me = { userId: string; email: string | null; isAdmin: boolean };
+/** `username` là đoạn đầu của URL /{username}/{slug}; `null` khi chưa chọn (ME-2). */
+export type Me = { userId: string; email: string | null; isAdmin: boolean; username: string | null };
 export type Role = "editor" | "viewer";
 export type Member = { userId: string; email: string; role: Role | "owner" };
 export type NewSite = { slug: string; template: string; title?: string; platform?: string };
@@ -28,6 +29,7 @@ export type WorkspaceApi = {
   save(site: Site, publish: boolean): Promise<Site>;
   traffic(slug: string, signal: AbortSignal): Promise<TrafficDay[]>;
   me(signal: AbortSignal): Promise<Me>;
+  claimUsername(username: string): Promise<unknown>;
   upload(slug: string, file: File): Promise<{ url: string }>;
   createSite(site: NewSite): Promise<Site>;
   renameSite(slug: string, newSlug: string): Promise<unknown>;
@@ -67,6 +69,7 @@ const liveApi: WorkspaceApi = {
     }),
   traffic: (slug, signal) => siteRequest("/api/sites/" + slug + "/traffic", { signal }),
   me: (signal) => siteRequest("/api/me", { signal }),
+  claimUsername: (username) => siteRequest("/api/me/username", json("POST", { username })),
   upload(slug, file) {
     const body = new FormData();
     body.set("file", file);

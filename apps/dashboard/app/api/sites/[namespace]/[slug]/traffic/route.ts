@@ -1,9 +1,10 @@
+import { sitePath, type SiteParams } from "@/lib/store";
 import { siteResponse, SiteApiError } from "@/lib/supabase";
 import { trafficDates, type TrafficDay } from "@/lib/traffic";
 
-export function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+export function GET(request: Request, { params }: { params: Promise<SiteParams> }) {
   return siteResponse(request, async ({ db }) => {
-    const { slug } = await params;
+    const slug = sitePath(await params);
     const dates = trafficDates(30);
     const { data, error } = await db
       .from("sites")

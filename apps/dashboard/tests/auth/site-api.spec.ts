@@ -11,7 +11,12 @@ import { localAdmin, localAuth, testSql } from "./local-supabase";
 const admin = localAdmin();
 const suffix = randomUUID().slice(0, 8);
 const password = `P4ssword-${randomUUID()}`;
-const site = (name: string, title = name) => SiteSchema.parse({ slug: `${name}-${suffix}`, profile: { title } });
+/** Không gian tên người dùng của từng tài khoản kiểm thử (AD-13). */
+const ns = (who: string) => `${who}-${suffix}`;
+const site = (name: string, title = name, who = "admin") =>
+  SiteSchema.parse({ slug: `${ns(who)}/${name}`, profile: { title } });
+/** Phần tên trang sau "username/". */
+const pageName = (slug: string) => slug.split("/")[1];
 const assigned = site("api-alpha", "Trang Alpha");
 const other = site("api-beta", "Trang Beta");
 const draftOnly = site("api-draft");
@@ -43,6 +48,7 @@ test.beforeAll(async () => {
        cross join (values (:'viewer'::uuid, 'viewer'), (:'editor'::uuid, 'editor')) as assignment(user_id, role)
        where site.slug in (:'a', :'c');
      insert into public.site_admins (user_id) values (:'admin'::uuid);
+     insert into public.profiles (user_id, username) values (:'admin'::uuid, :'admin_ns'), (:'owner'::uuid, :'owner_ns');
      commit;`,
     {
       a: assigned.slug,
@@ -54,12 +60,15 @@ test.beforeAll(async () => {
       viewer: users.get("viewer")!.id,
       editor: users.get("editor")!.id,
       admin: users.get("admin")!.id,
+      owner: users.get("owner")!.id,
+      admin_ns: ns("admin"),
+      owner_ns: ns("owner"),
     },
   );
 });
 
 test.afterAll(async () => {
-  testSql(`delete from public.sites where slug like '%-' || :'suffix';`, { suffix });
+  testSql(`delete from public.sites where slug like '%-' || :'suffix' || '/%';`, { suffix });
   for (const { id } of users.values()) await admin.auth.admin.deleteUser(id);
 });
 
@@ -112,9 +121,11 @@ test("BUILD-1 queues successful publishing changes even if GitHub fails", async 
     testSql("update public.builds set requested_at = now() - interval '61 seconds' where status = 'queued';");
   expireMergeWindow();
   const attemptsBefore = dispatches().length;
-  expect((await request.post("/api/sites", { headers, data: { ...buildSite, template: "classic" } })).status()).toBe(
-    201,
-  );
+  expect(
+    (
+      await request.post("/api/sites", { headers, data: { slug: pageName(buildSite.slug), template: "classic" } })
+    ).status(),
+  ).toBe(201);
   expect((await request.patch(path(buildSite), { headers, data: buildSite })).status()).toBe(200);
   await expectError(await request.post(path(buildSite), { headers: await as("viewer") }), 404);
   expect(builds()).toEqual([]);
@@ -150,7 +161,9 @@ test("BUILD-1 queues successful publishing changes even if GitHub fails", async 
   expect(restored).toMatchObject({ reason: "restore", status: "queued", slugs: [buildSite.slug] });
   expect(dispatches()).toHaveLength(attemptsBefore + 3);
 
-  expect((await request.post(path(buildSite) + "/rename", { headers, data: { newSlug: renamed } })).status()).toBe(200);
+  expect(
+    (await request.post(path(buildSite) + "/rename", { headers, data: { newSlug: pageName(renamed) } })).status(),
+  ).toBe(200);
   expect(builds()).toHaveLength(3);
   expect(builds().at(-1)).toMatchObject({
     id: restored?.id,
@@ -235,8 +248,27 @@ test("ME-1 returns the signed-in user and admin flag", async ({ request }) => {
       userId: users.get(name)!.id,
       email: users.get(name)!.email,
       isAdmin: name === "admin",
+      username: name === "admin" ? ns("admin") : null,
     });
   }
+});
+
+test("ME-2 claims a unique username once; sites need one", async ({ request, baseURL }) => {
+  const headers = await as("newcomer");
+  const claim = (username: unknown, h = headers) =>
+    request.post("/api/me/username", { headers: h, data: { username } });
+  await expectError(await request.post("/api/sites", { headers, data: { slug: "x", template: "classic" } }), 409);
+  for (const bad of ["admin", "api", "A", "-x", "a", "a/b", "x".repeat(33)]) await expectError(await claim(bad), 422);
+  await expectError(await claim(ns("admin")), 409);
+  const claimed = await claim(ns("newcomer"));
+  expect(claimed.status(), await claimed.text()).toBe(201);
+  expect(await claimed.json()).toEqual({ username: ns("newcomer") });
+  await expectError(await claim(`${ns("newcomer")}-2`), 409);
+  expect((await (await request.get("/api/me", { headers })).json()).username).toBe(ns("newcomer"));
+  await expectError(
+    await request.post("/api/me/username", { headers: { Origin: baseURL! }, data: { username: "x1" } }),
+    401,
+  );
 });
 
 test("SITE-1 lists only readable sites with canEdit", async ({ request }) => {
@@ -248,7 +280,7 @@ test("SITE-1 lists only readable sites with canEdit", async ({ request }) => {
   ]);
   expect(await list("editor")).toMatchObject([{ slug: assigned.slug, canEdit: true }, { slug: draftOnly.slug }]);
   const all: { slug: string; canEdit: boolean }[] = await list("admin");
-  expect(all.filter((s) => s.slug.endsWith(suffix))).toMatchObject([
+  expect(all.filter((s) => s.slug.startsWith(ns("admin") + "/"))).toMatchObject([
     { slug: assigned.slug, canEdit: true },
     { slug: other.slug, canEdit: true },
     { slug: draftOnly.slug, canEdit: true },
@@ -286,7 +318,7 @@ test("SITE-2 reads the draft or the published revision", async ({ request }) => 
   expect((await request.patch(path(draftOnly), { headers, data: draft })).status()).toBe(200);
   expect(await (await request.get(path(draftOnly), { headers })).json()).toMatchObject(draft);
   await expectError(await request.get(path(draftOnly) + "?revision=published", { headers }), 404);
-  await expectError(await request.get(path(`missing-${suffix}`), { headers }), 404);
+  await expectError(await request.get(path(site("missing")), { headers }), 404);
 });
 
 test("SITE-3 saves a draft without publishing", async ({ request }) => {
@@ -403,15 +435,12 @@ test("ADMIN-2…3 MEM-1…3 reject users who are not admin or owner with 403", a
 test("OWN-1 any user creates up to 3 sites and fully manages them as owner", async ({ request }) => {
   const headers = await as("owner");
   const owner = users.get("owner")!;
-  const mine = [1, 2, 3].map((n) => site(`own-${n}`).slug);
+  const mine = [1, 2, 3].map((n) => site(`own-${n}`, undefined, "owner").slug);
   for (const slug of mine) {
-    const response = await request.post("/api/sites", { headers, data: { slug, template: "classic" } });
+    const response = await request.post("/api/sites", { headers, data: { slug: pageName(slug), template: "classic" } });
     expect(response.status(), await response.text()).toBe(201);
   }
-  await expectError(
-    await request.post("/api/sites", { headers, data: { slug: site("own-4").slug, template: "classic" } }),
-    403,
-  );
+  await expectError(await request.post("/api/sites", { headers, data: { slug: "own-4", template: "classic" } }), 403);
   expect(await (await request.get("/api/sites", { headers })).json()).toEqual(
     mine.map((slug) => expect.objectContaining({ slug, canEdit: true, canManage: true, publishedSlug: null })),
   );
@@ -446,24 +475,28 @@ test("OWN-1 any user creates up to 3 sites and fully manages them as owner", asy
   expect((await request.delete(`${members}/${viewer.id}`, { headers })).status()).toBe(204);
 
   // Đổi slug, xóa trang; xóa xong thì tạo được trang mới trong giới hạn.
-  const renamed = site("own-renamed").slug;
-  expect((await request.post(path(mine[1]) + "/rename", { headers, data: { newSlug: renamed } })).status()).toBe(200);
+  const renamed = site("own-renamed", undefined, "owner").slug;
+  expect((await request.post(path(mine[1]) + "/rename", { headers, data: { newSlug: "own-renamed" } })).status()).toBe(
+    200,
+  );
   expect((await request.delete(path(renamed), { headers, data: { confirm: renamed } })).status()).toBe(204);
-  expect(
-    (await request.post("/api/sites", { headers, data: { slug: site("own-5").slug, template: "classic" } })).status(),
-  ).toBe(201);
+  expect((await request.post("/api/sites", { headers, data: { slug: "own-5", template: "classic" } })).status()).toBe(
+    201,
+  );
   // Owner không đụng được trang của người khác.
+  await expectError(await request.post(path(assigned) + "/rename", { headers, data: { newSlug: "x" } }), 403);
+  await expectError(await request.delete(path(assigned), { headers, data: { confirm: assigned.slug } }), 403);
+  // Chỉ admin tạo trang trong không gian của người khác.
   await expectError(
-    await request.post(path(assigned) + "/rename", { headers, data: { newSlug: site("x").slug } }),
+    await request.post("/api/sites", { headers, data: { slug: "own-6", namespace: ns("admin"), template: "classic" } }),
     403,
   );
-  await expectError(await request.delete(path(assigned), { headers, data: { confirm: assigned.slug } }), 403);
 });
 
 test("ADMIN-1 creates an empty draft from a template", async ({ request }) => {
   const headers = await as("admin");
-  const slug = `created-${suffix}`;
-  const body = { slug, template: "video-first", title: "Trang mới", platform: "tiktok" };
+  const slug = site("created").slug;
+  const body = { slug: "created", template: "video-first", title: "Trang mới", platform: "tiktok" };
   const response = await request.post("/api/sites", { headers, data: body });
   expect(response.status(), await response.text()).toBe(201);
   expect(await response.json()).toMatchObject({
@@ -484,22 +517,31 @@ test("ADMIN-1 creates an empty draft from a template", async ({ request }) => {
   expect(await members.json()).toEqual([]);
   await expectError(await request.post("/api/sites", { headers, data: body }), 409);
   for (const data of [
-    { slug: "api", template: "classic" },
-    { slug: "preview", template: "classic" },
+    { slug: "a/b", template: "classic" },
+    { slug: "x", namespace: "Bad NS", template: "classic" },
     { slug: "Bad Slug", template: "classic" },
     { slug: "x".repeat(65), template: "classic" },
-    { slug: `t-${suffix}`, template: "missing-template" },
+    { slug: "t", template: "missing-template" },
     { template: "classic" },
   ]) {
     await expectError(await request.post("/api/sites", { headers, data }), 422);
   }
+  // Admin chọn được không gian khác, ví dụ của owner.
+  const placed = await request.post("/api/sites", {
+    headers,
+    data: { slug: "by-admin", namespace: ns("owner"), template: "classic" },
+  });
+  expect(placed.status(), await placed.text()).toBe(201);
+  expect((await placed.json()).slug).toBe(`${ns("owner")}/by-admin`);
 });
 
 test("ADMIN-2 renames a slug and keeps a redirect", async ({ request }) => {
   const headers = await as("admin");
-  const from = `rename-${suffix}`;
-  const to = `renamed-${suffix}`;
-  expect((await request.post("/api/sites", { headers, data: { slug: from, template: "classic" } })).status()).toBe(201);
+  const from = site("rename").slug;
+  const to = site("renamed").slug;
+  expect((await request.post("/api/sites", { headers, data: { slug: "rename", template: "classic" } })).status()).toBe(
+    201,
+  );
   expect((await request.post(path(from), { headers, data: { note: "v1" } })).status()).toBe(200);
   testSql(
     `insert into public.site_members (user_id, site_id, role)
@@ -507,7 +549,7 @@ test("ADMIN-2 renames a slug and keeps a redirect", async ({ request }) => {
     { editor: users.get("editor")!.id, from },
   );
 
-  const response = await request.post(path(from) + "/rename", { headers, data: { newSlug: to } });
+  const response = await request.post(path(from) + "/rename", { headers, data: { newSlug: "renamed" } });
   expect(response.status(), await response.text()).toBe(200);
   expect(await response.json()).toEqual({ slug: to, redirectFrom: from });
   await expectError(await request.get(path(from), { headers }), 404);
@@ -531,15 +573,12 @@ test("ADMIN-2 renames a slug and keeps a redirect", async ({ request }) => {
   expect((await restored.json()).slug).toBe(to);
 
   // The old slug stays reserved by its redirect, except for renaming back.
-  await expectError(await request.post("/api/sites", { headers, data: { slug: from, template: "classic" } }), 409);
-  await expectError(await request.post(path(to) + "/rename", { headers, data: { newSlug: assigned.slug } }), 409);
-  await expectError(await request.post(path(to) + "/rename", { headers, data: { newSlug: to } }), 422);
-  await expectError(await request.post(path(to) + "/rename", { headers, data: { newSlug: "sitemap" } }), 422);
-  await expectError(
-    await request.post(path(`missing-${suffix}`) + "/rename", { headers, data: { newSlug: `m-${suffix}` } }),
-    404,
-  );
-  const back = await request.post(path(to) + "/rename", { headers, data: { newSlug: from } });
+  await expectError(await request.post("/api/sites", { headers, data: { slug: "rename", template: "classic" } }), 409);
+  await expectError(await request.post(path(to) + "/rename", { headers, data: { newSlug: "api-alpha" } }), 409);
+  await expectError(await request.post(path(to) + "/rename", { headers, data: { newSlug: "renamed" } }), 422);
+  await expectError(await request.post(path(to) + "/rename", { headers, data: { newSlug: "a/b" } }), 422);
+  await expectError(await request.post(path(site("missing")) + "/rename", { headers, data: { newSlug: "m" } }), 404);
+  const back = await request.post(path(to) + "/rename", { headers, data: { newSlug: "rename" } });
   expect(back.status()).toBe(200);
   expect(
     testSql("select from_slug from public.slug_redirects where from_slug in (:'from', :'to');", { from, to }),
@@ -548,11 +587,11 @@ test("ADMIN-2 renames a slug and keeps a redirect", async ({ request }) => {
 
 test("ADMIN-3 deletes a site after confirmation", async ({ request }) => {
   const headers = await as("admin");
-  const slug = `delete-${suffix}`;
-  const first = `delete-first-${suffix}`;
-  expect((await request.post("/api/sites", { headers, data: { slug: first, template: "classic" } })).status()).toBe(
-    201,
-  );
+  const slug = site("delete").slug;
+  const first = site("delete-first").slug;
+  expect(
+    (await request.post("/api/sites", { headers, data: { slug: "delete-first", template: "classic" } })).status(),
+  ).toBe(201);
   // Images uploaded under the slug before a rename are removed with the site too.
   const upload = async (target: string) => {
     const file = { name: "a.png", mimeType: "image/png", buffer: await pngImage() };
@@ -561,7 +600,7 @@ test("ADMIN-3 deletes a site after confirmation", async ({ request }) => {
     return (await response.json()).url as string;
   };
   const images = [await upload(first)];
-  expect((await request.post(path(first) + "/rename", { headers, data: { newSlug: slug } })).status()).toBe(200);
+  expect((await request.post(path(first) + "/rename", { headers, data: { newSlug: "delete" } })).status()).toBe(200);
   images.push(await upload(slug));
   for (const url of images) expect((await request.get(url)).status()).toBe(200);
   await expectError(await request.delete(path(slug), { headers, data: { confirm: "wrong" } }), 422);
@@ -602,14 +641,14 @@ test("MEM-1…3 list, assign, change, and remove members", async ({ request }) =
   );
   await expectError(await request.put(members, { headers, data: { email: "not-an-email", role: "viewer" } }), 422);
   await expectError(await request.put(members, { headers, data: { email: newcomer.email, role: "owner" } }), 422);
-  await expectError(await request.get(path(`missing-${suffix}`) + "/members", { headers }), 404);
+  await expectError(await request.get(path(site("missing")) + "/members", { headers }), 404);
 
   for (const id of [newcomer.id, newcomer.id, "not-a-uuid"]) {
     const response = await request.delete(`${members}/${id}`, { headers });
     expect(response.status()).toBe(204);
   }
   await expectError(await request.get(path(assigned), { headers: await as("newcomer") }), 404);
-  await expectError(await request.delete(`${path(`missing-${suffix}`)}/members/${newcomer.id}`, { headers }), 404);
+  await expectError(await request.delete(`${path(site("missing"))}/members/${newcomer.id}`, { headers }), 404);
 });
 
 test("MEDIA-1 uploads an image as WebP for editors", async ({ request }) => {
@@ -670,7 +709,7 @@ test("BUILD-3 BUILD-4 show the latest build and let admins and owners rebuild", 
   expect(queued.status()).toBe(202);
   const { id } = await queued.json();
   expect(await queued.json()).toEqual({ id: expect.any(Number), status: "queued" });
-  const owned = await rebuild("owner", { slugs: [site("own-1").slug] });
+  const owned = await rebuild("owner", { slugs: [site("own-1", undefined, "owner").slug] });
   expect(owned.status()).toBe(202);
 
   // Mọi vai trò trên trang đều xem được; người ngoài nhận 404.

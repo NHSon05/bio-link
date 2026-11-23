@@ -1,19 +1,19 @@
 import { SiteSchema } from "@bio-link/schema";
 import { z } from "zod";
-import { PublishSchema, deleteSite, readBody, readSite, saveSite } from "@/lib/store";
+import { PublishSchema, deleteSite, readBody, readSite, saveSite, sitePath, type SiteParams } from "@/lib/store";
 import { SiteApiError, siteResponse } from "@/lib/supabase";
 
-type Context = { params: Promise<{ slug: string }> };
+type Context = { params: Promise<SiteParams> };
 
 export function GET(request: Request, { params }: Context) {
   return siteResponse(request, async ({ db }) =>
-    readSite(db, (await params).slug, new URL(request.url).searchParams.get("revision") === "published"),
+    readSite(db, sitePath(await params), new URL(request.url).searchParams.get("revision") === "published"),
   );
 }
 
 export function PATCH(request: Request, { params }: Context) {
   return siteResponse(request, async ({ userId }) => {
-    const { slug } = await params;
+    const slug = sitePath(await params);
     const config = await readBody(request, SiteSchema);
     return saveSite(slug, userId, { config, publish: false });
   });
@@ -21,7 +21,7 @@ export function PATCH(request: Request, { params }: Context) {
 
 export function POST(request: Request, { params }: Context) {
   return siteResponse(request, async ({ userId }) => {
-    const { slug } = await params;
+    const slug = sitePath(await params);
     const { note } = await readBody(request, PublishSchema, true);
     return saveSite(slug, userId, { note, publish: true });
   });
@@ -30,7 +30,7 @@ export function POST(request: Request, { params }: Context) {
 /** Keep the existing API for saving and immediately publishing a complete config. */
 export function PUT(request: Request, { params }: Context) {
   return siteResponse(request, async ({ userId }) => {
-    const { slug } = await params;
+    const slug = sitePath(await params);
     const config = await readBody(request, SiteSchema);
     return saveSite(slug, userId, { config, publish: true });
   });
@@ -42,7 +42,7 @@ export function DELETE(request: Request, { params }: Context) {
   return siteResponse(
     request,
     async ({ userId }) => {
-      const { slug } = await params;
+      const slug = sitePath(await params);
       const { confirm } = await readBody(request, DeleteSchema);
       if (confirm !== slug) throw new SiteApiError(422, "confirm: Nhập đúng slug để xác nhận xóa");
       await deleteSite(userId, slug);

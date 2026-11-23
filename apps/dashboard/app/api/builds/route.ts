@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { requestBuild } from "@/lib/builds";
-import { SlugSchema, readBody } from "@/lib/store";
+import { SitePathSchema, readBody } from "@/lib/store";
 import { siteResponse } from "@/lib/supabase";
 
-const RebuildSchema = z.object({ slugs: z.array(SlugSchema).max(100).optional() });
+const RebuildSchema = z.object({ slugs: z.array(SitePathSchema).max(100).optional() });
 
 export function POST(request: Request) {
   return siteResponse(
