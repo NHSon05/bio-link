@@ -8,12 +8,14 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:preview": "pnpm --filter @bio-link/runtime build && astro build --config astro.preview.config.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "lint": "eslint"
   },
   "dependencies": {
     "@astrojs/node": "11.1.14",
+    "@astrojs/vercel": "11.0.22",
     "@bio-link/schema": "workspace:*",
     "@bio-link/templates": "workspace:*",
     "@supabase/supabase-js": "^2.119.1",
