@@ -21,7 +21,7 @@ Auth has its own plan, contract, and checklist under [docs/auth](auth/AUTH_PLAN.
 | F2  | Site editor: draft, publish, versions, preview | §7, §9            | F0, F1     | F2-10, F2-11 left   |
 | F3  | Site and access management (admin)             | §9                | F1, F2     | Done (builds in F5) |
 | F4  | Media uploads                                  | §7                | F1         | Thumbnails left     |
-| F5  | Build and deploy pipeline                      | §3, §9            | F2         | Not started         |
+| F5  | Build and deploy pipeline                      | §3, §9            | F2         | In progress         |
 | F6  | Products, collections, affiliate links         | §12               | F1, F5     | Per-site CRUD       |
 | F7  | Click tracking and analytics                   | §8                | F5         | Daily totals        |
 | F8  | Subscribe endpoint                             | §12               | F5         | Client only         |
@@ -112,16 +112,16 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 
 **Depends on.** F2. Needs AWS access (S3, CloudFront) and a CI runner.
 
-- [ ] F5-1 Migration: `builds (id, status, reason, slugs, requested_by, requested_at, started_at, finished_at, error)`.
-- [ ] F5-2 After a successful publish or restore, queue a build and call the build hook (`BUILD-1`). A failed hook call must not fail the publish; the build stays `queued` and can be retried.
-- [ ] F5-3 Build job: run `pnpm build:landing` with the secret key, upload changed files from `dist/client/` to S3, then invalidate `/{slug}`, `/{slug}/*`, and `/{slug}.json` on CloudFront.
-- [ ] F5-4 Build job reports progress to the dashboard (`BUILD-2`).
+- [x] F5-1 Migration `20261123000000_builds.sql` adds the `builds` queue and its RPCs. Applied to hosted Supabase and verified with `latest_site_build` returning HTTP 200.
+- [x] F5-2 After a successful publish, restore, rename, or delete, queue a build and call the build hook (`BUILD-1`). A failed hook call leaves the build `queued` and preserves the successful site response.
+- [ ] F5-3 Build job: run `pnpm build:landing`, sync `dist/client/` to S3, and invalidate CloudFront. `.github/workflows/landing.yml` uses repository secrets for the deploy IAM user on the AWS Free plan. The existing bucket, distribution, and slug routing passed manual checks. The first CI run still needs the workflow on GitHub and the public dashboard callbacks. See [landing deploy setup](../README.md#landing-deploy).
+- [x] F5-4 Build job reports progress to the dashboard (`BUILD-2`), plus `POST /api/internal/builds/cron` for the scheduled full build.
 - [ ] F5-5 Build status endpoint and a status badge in the editor (`BUILD-3`, `BUILD-4`).
-- [ ] F5-6 Cache headers: long TTL for HTML and assets with invalidation, about 5 minutes for `/{slug}.json` (`PUB-1`, `PUB-2`).
-- [ ] F5-7 Scheduled rebuild (cron) as the fallback when no webhook fires (`BUILD-1` with `reason: "cron"`).
+- [ ] F5-6 Cache headers: long TTL for HTML and assets with invalidation, about 5 minutes for `/{slug}.json` (`PUB-1`, `PUB-2`). Set by the workflow's two `s3 sync` passes; not run yet.
+- [ ] F5-7 Scheduled rebuild (cron) as the fallback when no webhook fires (`BUILD-1` with `reason: "cron"`). Hourly schedule in the workflow; not run yet.
 - [ ] F5-8 Measure a full build for 100 slugs. Build only changed slugs (compare `updatedAt`) if a full build is too slow.
 
-**Verification.** —
+**Verification.** `DOCKER_CONTEXT=orbstack PLAYWRIGHT_CHANNEL=chrome pnpm test:auth` built the dashboard and passed 57 tests with one mock-only test skipped. The `BUILD-1` test initially failed because no job was queued. It now verifies publish, full-config publish, restore, rename, and delete, including coalescing without a duplicate dispatch and preserving a queued job on a simulated GitHub `503`. `pnpm lint`, `pnpm format:check`, and `actionlint` passed. The first CI run remains pending.
 
 ## F6 — Products, collections, affiliate links
 

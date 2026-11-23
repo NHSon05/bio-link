@@ -1,0 +1,150 @@
+# F5: build landing tĩnh và đẩy lên S3 + CloudFront (BUILD-1, BUILD-2, PUB-1, PUB-2).
+# Kích hoạt: dashboard gửi repository_dispatch sau khi xuất bản; cron mỗi giờ; hoặc chạy tay (build toàn bộ).
+name: Landing deploy
+
+on:
+  repository_dispatch:
+    types: [build-landing]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Một deploy tại một thời điểm; job sau tự nhận các build còn queued (start_build gộp chúng).
+concurrency:
+  group: landing-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+      PUBLIC_DASHBOARD_URL: ${{ vars.PUBLIC_DASHBOARD_URL }}
+      CALLBACK_TOKEN: ${{ secrets.BUILD_CALLBACK_TOKEN }}
+    steps:
+      - name: Nhận build từ dashboard
+        id: claim
+        env:
+          EVENT: ${{ github.event_name }}
+          PAYLOAD_ID: ${{ github.event.client_payload.buildId }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          if [[ "$DASHBOARD_URL" != https://* || "$PUBLIC_DASHBOARD_URL" != https://* ]]; then
+            echo "::error::Cần cấu hình URL HTTPS cho DASHBOARD_URL (callback) và PUBLIC_DASHBOARD_URL (landing)."
+            exit 1
+          fi
+          if [ "$EVENT" = repository_dispatch ]; then
+            [[ "$PAYLOAD_ID" =~ ^[1-9][0-9]{0,15}$ ]] || { echo "::error::buildId không hợp lệ"; exit 1; }
+            url="$DASHBOARD_URL/api/internal/builds/$PAYLOAD_ID"
+            data='{"status":"running"}'
+          else
+            url="$DASHBOARD_URL/api/internal/builds/cron"
+            data='{}'
+          fi
+          code=$(curl -sS --max-time 30 -o claim.json -w '%{http_code}' -X POST "$url" \
+            -H "Authorization: Bearer $CALLBACK_TOKEN" \
+            -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
+            -H 'Content-Type: application/json' --data "$data")
+          if [ "$code" = 409 ]; then
+            echo "Build đã được job khác nhận hoặc gộp; bỏ qua."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$code" = 200 ] || { echo "::error::Dashboard trả $code"; cat claim.json; exit 1; }
+          echo "id=$(jq -r .id claim.json)" >> "$GITHUB_OUTPUT"
+          # Danh sách slug rỗng = build toàn bộ → xóa cache tất cả.
+          echo "paths=$(jq -r 'if (.slugs | length) == 0 then "/*"
+            else (["/", "/index.html"] + (.slugs | map("/\(.)", "/\(.)/*", "/\(.).json"))) | join(" ") end' claim.json)" \
+            >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.claim.outputs.skip != 'true'
+
+      - uses: pnpm/action-setup@v4
+        if: steps.claim.outputs.skip != 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.claim.outputs.skip != 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Build landing
+        if: steps.claim.outputs.skip != 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          DASHBOARD_ORIGIN: ${{ vars.PUBLIC_DASHBOARD_URL }}
+          PUBLIC_BEACON_URL: ${{ vars.PUBLIC_BEACON_URL }}
+          PUBLIC_SUBSCRIBE_URL: ${{ vars.PUBLIC_SUBSCRIBE_URL }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "::error::Thiếu SUPABASE_URL hoặc SUPABASE_SECRET_KEY để build dữ liệu đã xuất bản."
+            exit 1
+          fi
+          pnpm install --frozen-lockfile
+          pnpm build:landing
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.claim.outputs.skip != 'true'
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload lên S3 và xóa cache CloudFront
+        if: steps.claim.outputs.skip != 'true'
+        env:
+          BUCKET: ${{ vars.S3_BUCKET }}
+          DISTRIBUTION: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          PATHS: ${{ steps.claim.outputs.paths }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          out=apps/landing/dist/client
+          destination="s3://$BUCKET"
+          upload() {
+            # Khi chạy tay, ghi lại Cache-Control cả cho object mà sync sẽ bỏ qua.
+            if [ "$EVENT" = workflow_dispatch ]; then
+              aws s3 cp "$out" "$destination" --recursive "$@"
+            fi
+            aws s3 sync "$out" "$destination" --delete "$@"
+          }
+          # HTML và asset: CDN giữ lâu, deploy tự invalidate (PUB-1).
+          upload --exclude "*.json" \
+            --cache-control "public, max-age=300, s-maxage=31536000"
+          # JSON xếp hạng: TTL ngắn (PUB-2).
+          upload --exclude "*" --include "*.json" \
+            --content-type application/json --cache-control "public, max-age=60, s-maxage=300"
+          read -ra paths <<< "$PATHS"
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" --paths "${paths[@]}"
+
+      - name: Báo thành công
+        if: steps.claim.outputs.skip != 'true'
+        env:
+          BUILD_ID: ${{ steps.claim.outputs.id }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          curl -sS --fail-with-body --max-time 30 -X POST "$DASHBOARD_URL/api/internal/builds/$BUILD_ID" \
+            -H "Authorization: Bearer $CALLBACK_TOKEN" \
+            -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
+            -H 'Content-Type: application/json' \
+            --data '{"status":"succeeded"}'
+
+      - name: Báo lỗi
+        if: ${{ !success() && steps.claim.outputs.id != '' }}
+        env:
+          BUILD_ID: ${{ steps.claim.outputs.id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          curl -sS --max-time 30 -X POST "$DASHBOARD_URL/api/internal/builds/$BUILD_ID" \
+            -H "Authorization: Bearer $CALLBACK_TOKEN" \
+            -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -n --arg e "Job lỗi: $RUN_URL" '{status: "failed", error: $e}')"

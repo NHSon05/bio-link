@@ -3,6 +3,7 @@ import { SiteSchema, type Site } from "@bio-link/schema";
 import { templateIds } from "@bio-link/templates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { queueLandingBuild } from "./builds";
 import { removeMedia } from "./media";
 import { SiteApiError, siteWriter } from "./supabase";
 
@@ -68,7 +69,8 @@ export async function saveSite(
     throw new SiteApiError(422, "Slug trong JSON phải trùng với URL");
   }
 
-  const { data, error } = await siteWriter().rpc("save_site", {
+  const db = siteWriter();
+  const { data, error } = await db.rpc("save_site", {
     target_slug: slug,
     actor_id: userId,
     site_config: options.config ?? null,
@@ -76,11 +78,13 @@ export async function saveSite(
     publish_note: options.note ?? null,
     restore_version: options.restoreVersion ?? null,
   });
-  return SiteSchema.parse(rpcResult(data, error));
+  const saved = SiteSchema.parse(rpcResult(data, error));
+  if (options.publish) await queueLandingBuild(db, userId, options.restoreVersion ? "restore" : "publish", [slug]);
+  return saved;
 }
 
 /** Map the PT4xx codes raised by our RPCs to API errors. */
-function rpcResult<T>(data: T, error: { code?: string; message: string } | null): T {
+export function rpcResult<T>(data: T, error: { code?: string; message: string } | null): T {
   if (error?.code === "23505") throw new SiteApiError(409, "Slug đã được dùng"); // concurrent create_site
   const status = Number(/^PT(4\d\d)$/.exec(error?.code ?? "")?.[1]);
   if (status) throw new SiteApiError(status, error!.message);
@@ -135,8 +139,10 @@ export async function createSite(actorId: string, input: z.infer<typeof CreateSi
 
 export async function renameSite(actorId: string, slug: string, newSlug: string) {
   if (newSlug === slug) throw new SiteApiError(422, "Slug mới phải khác slug hiện tại");
-  const { error } = await siteWriter().rpc("rename_site", { actor_id: actorId, target_slug: slug, new_slug: newSlug });
+  const db = siteWriter();
+  const { error } = await db.rpc("rename_site", { actor_id: actorId, target_slug: slug, new_slug: newSlug });
   rpcResult(null, error);
+  await queueLandingBuild(db, actorId, "rename", [slug, newSlug]);
   return { slug: newSlug, redirectFrom: slug };
 }
 
@@ -150,7 +156,8 @@ export async function deleteSite(actorId: string, slug: string) {
     .maybeSingle();
   if (error) throw error;
   rpcResult(null, (await db.rpc("delete_site", { actor_id: actorId, target_slug: slug })).error);
-  await removeMedia([slug, ...(site?.slug_redirects.map((redirect) => redirect.from_slug) ?? [])]);
+  const slugs = [slug, ...(site?.slug_redirects.map((redirect) => redirect.from_slug) ?? [])];
+  await Promise.all([queueLandingBuild(db, actorId, "delete", slugs), removeMedia(slugs)]);
 }
 
 export const RoleSchema = z.enum(["editor", "viewer"]);
