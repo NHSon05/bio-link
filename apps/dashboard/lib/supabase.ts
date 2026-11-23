@@ -75,7 +75,7 @@ function sameOrigin(request: Request) {
 export async function siteResponse(
   request: Request,
   handle: (access: SiteAccess) => Promise<unknown>,
-  status: 200 | 201 | 204 = 200,
+  status: 200 | 201 | 202 | 204 = 200,
 ) {
   await connection();
   const headers = { "Cache-Control": "private, no-store" };

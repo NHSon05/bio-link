@@ -51,15 +51,19 @@ export function mockWorkspaceApi(userId: string): WorkspaceApi {
     },
     async me(signal) {
       signal.throwIfAborted();
-      return { userId, email: null, isAdmin: false };
+      return { userId, email: null, isAdmin: false, username: null };
     },
     upload: unavailable,
+    claimUsername: unavailable,
     createSite: unavailable,
     renameSite: unavailable,
     deleteSite: unavailable,
     members: unavailable,
     setMember: unavailable,
     removeMember: unavailable,
+    // Dữ liệu mẫu không build lên CDN.
+    latestBuild: async () => null,
+    rebuild: unavailable,
     async traffic(slug, signal) {
       signal.throwIfAborted();
       const index = fixtures.findIndex((site) => site.slug === slug);

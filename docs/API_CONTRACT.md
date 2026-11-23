@@ -80,11 +80,23 @@ Returns who is signed in so the dashboard can hide actions the user cannot perfo
 
 - `200`
   ```json
-  { "userId": "uuid", "email": "a@b.vn", "isAdmin": false }
+  { "userId": "uuid", "email": "a@b.vn", "isAdmin": false, "username": "lan" }
   ```
+  `username` is `null` until the user claims one (`ME-2`).
+- `401` without a session.
+
+### ME-2 — `POST /api/me/username` · Implemented
+
+Claims the user's username, the first segment of every site URL `/{username}/{slug}` (AD-13). It can be set once and never changed, because changing it would break every shared link.
+
+- Body: `{ "username": string }` — 2–32 characters `a-z`, `0-9`, `-`, not starting with `-`.
+- `201` `{ "username": "lan" }`.
+- `409` the user already has a username, or another user took it. `422` invalid or reserved (`admin`, `api`, `preview`, `sitemap`, `assets`, `img`, `static`, `www`, `app`, `dashboard`, `runtime`, `favicon`).
 - `401` without a session.
 
 ## Sites (editor)
+
+A site's `slug` is its full path `username/page` (AD-13), for example `lan/page-abc`. Two users can each have `page-abc`; `{slug}` in the routes below is that full path, so `/api/sites/lan/page-abc`.
 
 ### SITE-1 — `GET /api/sites` · Implemented
 
@@ -159,18 +171,18 @@ Renders a site with the production templates. Not deployed to the CDN.
 
 Creates a site with an empty draft. Nothing is published until `SITE-4`. Any signed-in user may call it; a non-admin becomes the site's `owner`.
 
-- Body: `{ "slug": string, "template": string, "title"?: string, "platform"?: string }`
-- `201` `Site` (the new draft). The draft uses the template's default theme, regions, and an empty `blocks` list.
-- `403` a non-admin who already owns 3 sites. `409` slug already used by a site or by a redirect in `slug_redirects`. `422` invalid slug, reserved slug, or unknown template.
+- Body: `{ "slug": string, "template": string, "title"?: string, "platform"?: string, "namespace"?: string }`. `slug` is the page part only; the site is created at `{namespace}/{slug}`, where `namespace` defaults to the caller's username.
+- `201` `Site` (the new draft, `slug` is the full path). The draft uses the template's default theme, regions, and an empty `blocks` list.
+- `403` a non-admin who already owns 3 sites, or passes a `namespace` other than their own. `409` the caller has no username yet (`ME-2`), or the path is already used by a site or by a redirect in `slug_redirects`. `422` invalid slug or namespace, or unknown template.
 
 ### ADMIN-2 — `POST /api/sites/{slug}/rename` · Implemented
 
 Changes the slug and keeps the old URL working.
 
-- Body: `{ "newSlug": string }`
-- `200` `{ "slug": "new-slug", "redirectFrom": "old-slug" }`. Updates `slug` in the row, the draft, and the published config, and inserts a row in `slug_redirects`. Members and versions stay attached to the site.
+- Body: `{ "newSlug": string }` — the page part only; the site stays under the same username.
+- `200` `{ "slug": "lan/new-slug", "redirectFrom": "lan/old-slug" }`. Updates `slug` in the row, the draft, and the published config, and inserts a row in `slug_redirects`. Members and versions stay attached to the site.
 - Side effect: queues a build for both the old and new slug (`BUILD-1`, `reason: "rename"`). The deployment serves `/{newSlug}` and a redirect from `/{oldSlug}` (`PUB-4`).
-- `403` neither admin nor owner. `404` unknown slug (admin). `409` `newSlug` taken. `422` invalid or reserved slug, or `newSlug` equals the current slug.
+- `403` neither admin nor owner. `404` unknown slug (admin). `409` `newSlug` taken. `422` invalid slug, or `newSlug` equals the current slug.
 
 ### ADMIN-3 — `DELETE /api/sites/{slug}` · Implemented
 
@@ -239,7 +251,7 @@ The build job reports progress. Not for browsers.
 - `401` missing or wrong token. `404` unknown build. `409` transition not allowed (only `queued → running → succeeded | failed`; a superseded build answers `409`, and the job exits without deploying). `422` invalid body.
 - `POST /api/internal/builds/cron` (same auth, no body) creates a full `cron` build already `running`, fails `running` builds older than one hour, and answers like `running` above. The workflow calls it on its hourly schedule.
 
-### BUILD-3 — `GET /api/sites/{slug}/builds/latest` · Proposed (design for review)
+### BUILD-3 — `GET /api/sites/{slug}/builds/latest` · Implemented
 
 Any role on the site.
 
@@ -252,23 +264,26 @@ Any role on the site.
     "requestedAt": "…",
     "finishedAt": "…",
     "error": null,
-    "liveUpdatedAt": "…"
+    "liveUpdatedAt": "…",
+    "publishedUpdatedAt": "…"
   }
   ```
-  `status` is `queued`, `running`, `succeeded`, or `failed`. `liveUpdatedAt` is the `updatedAt` of the newest version published before the last successful build covering this slug started, or `null` if none has. The editor shows "đã lên CDN" when it equals the published config's `updatedAt`, otherwise "đang cập nhật" (or "build lỗi" when `status` is `failed`).
+  `status` is `queued`, `running`, `succeeded`, or `failed`. `liveUpdatedAt` is the `updatedAt` of the newest version published before the last successful build covering this slug started, or `null` if none has. `publishedUpdatedAt` is the published config's `updatedAt` (`null` if never published). The editor shows "Đã lên CDN" when the two are equal, "Build lỗi" when `status` is `failed`, and otherwise "Đang cập nhật CDN…", checking again every 5 seconds. A request merged into a queued build keeps that build's `reason`.
 - `404` unknown or unassigned slug, or no build yet.
 
-### BUILD-4 — `POST /api/builds` · Proposed (design for review)
+### BUILD-4 — `POST /api/builds` · Implemented
 
-Manually queues a build (admin), for example after a failed deploy. Same merge and hook rules as `BUILD-1`, with `reason: "manual"`.
+Manually queues a build, for example after a failed deploy. Admins can build anything; an owner can rebuild only sites they own (the editor's "Build lại" button). Same merge and hook rules as `BUILD-1`, with `reason: "manual"`.
 
 - Body: `{ "slugs"?: string[] }`. Empty or missing means a full build.
 - `202` `{ "id": number, "status": "queued" }`
-- `403` non-admin. `422` unknown slug in the list.
+- `403` neither admin nor the owner of every listed slug; a full build is admin-only. `422` invalid slug, or a slug that does not exist or the caller cannot read.
 
 ## Public artifacts (CDN)
 
 These are static files produced by `pnpm build:landing` and served by CloudFront. No auth.
+
+Public URLs are `/{username}/{slug}` (AD-13); `{slug}` below is that full path.
 
 ### PUB-1 — `GET /{slug}` · Implemented (build), Proposed (headers)
 
@@ -283,7 +298,7 @@ Ranking data for the runtime. Contains block ids only; the runtime reorders bloc
 - `200`
   ```json
   {
-    "slug": "fanpage-abc",
+    "slug": "admin/fanpage-abc",
     "updatedAt": "2026-11-19T09:00:00Z",
     "order": { "hero": ["v1"], "main": ["p1", "c1"], "footer": ["l1"] }
   }
@@ -296,6 +311,8 @@ Ranking data for the runtime. Contains block ids only; the runtime reorders bloc
 Lists `/{slug}` for every published site, with `<lastmod>` from `updatedAt`. Excludes `/preview` and redirected slugs.
 
 ### PUB-4 — `GET /{oldSlug}` after a rename · Implemented (static page), Proposed (CDN 301)
+
+Sites created before AD-13 moved from `/{slug}` to `/admin/{slug}`; their old one-segment paths are redirects too.
 
 Returns a `301` to `/{newSlug}` (CloudFront function or S3 redirect rule), keeping the query string so UTM parameters survive. If the CDN cannot return a real redirect, serve a static page with `<meta http-equiv="refresh">` and a canonical link.
 

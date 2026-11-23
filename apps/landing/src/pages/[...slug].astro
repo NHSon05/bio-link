@@ -1,5 +1,5 @@
 ---
-/** 1 trang static cho mỗi slug → /{slug}/index.html trên S3 + CloudFront. */
+/** 1 trang static cho mỗi slug "user/trang" → /user/trang/index.html; cả trang chuyển hướng từ slug cũ (1 hoặc 2 cấp). */
 import type { Site } from "@bio-link/schema";
 import SitePage from "../layouts/SitePage.astro";
 import { loadBuildSites, loadRedirects } from "../lib/data";

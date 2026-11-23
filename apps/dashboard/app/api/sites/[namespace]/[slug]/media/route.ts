@@ -1,14 +1,14 @@
 import { uploadMedia } from "@/lib/media";
-import { requireEditor } from "@/lib/store";
+import { requireEditor, sitePath, type SiteParams } from "@/lib/store";
 import { siteResponse } from "@/lib/supabase";
 
-type Context = { params: Promise<{ slug: string }> };
+type Context = { params: Promise<SiteParams> };
 
 export function POST(request: Request, { params }: Context) {
   return siteResponse(
     request,
     async ({ db }) => {
-      const { slug } = await params;
+      const slug = sitePath(await params);
       await requireEditor(db, slug);
       return uploadMedia(request, slug);
     },

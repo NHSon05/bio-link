@@ -113,24 +113,68 @@ export async function requireEditor(db: SupabaseClient, slug: string) {
   }
 }
 
-const RESERVED_SLUGS = ["preview", "api", "sitemap", "assets", "_astro"];
+export type SiteParams = { namespace: string; slug: string };
+/** Ghép hai đoạn URL /api/sites/{namespace}/{slug} thành khóa trang "username/slug". */
+export const sitePath = ({ namespace, slug }: SiteParams) => `${namespace}/${slug}`;
+
+/** Phần tên trang trong /{username}/{slug}. */
 export const SlugSchema = z
   .string()
   .min(1)
   .max(64)
-  .regex(/^[a-z0-9-]+$/, "slug chỉ gồm a-z, 0-9, -")
-  .refine((slug) => !RESERVED_SLUGS.includes(slug), "Slug này dành cho hệ thống");
+  .regex(/^[a-z0-9-]+$/, "slug chỉ gồm a-z, 0-9, -");
+
+/** Đường dẫn đầy đủ "username/slug" — khóa của trang trong API và build. */
+export const SitePathSchema = SiteSchema.shape.slug;
+
+// Giữ khớp với claim_username trong migration 20261125000000_user_namespaces.sql.
+const RESERVED_USERNAMES = [
+  "admin",
+  "api",
+  "preview",
+  "sitemap",
+  "assets",
+  "img",
+  "static",
+  "www",
+  "app",
+  "dashboard",
+  "runtime",
+  "favicon",
+];
+export const UsernameSchema = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{1,31}$/, "Tên người dùng gồm 2–32 ký tự a-z, 0-9, -, không bắt đầu bằng -")
+  .refine((name) => !RESERVED_USERNAMES.includes(name), "Tên người dùng này dành cho hệ thống");
+
+export async function usernameOf(userId: string): Promise<string | null> {
+  const { data, error } = await siteWriter().from("profiles").select("username").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return data?.username ?? null;
+}
+
+export async function claimUsername(actorId: string, username: string) {
+  const { data, error } = await siteWriter().rpc("claim_username", { actor_id: actorId, new_username: username });
+  return { username: rpcResult(data, error) as string };
+}
 
 export const CreateSiteSchema = z.object({
   slug: SlugSchema,
+  /** Mặc định là tên người dùng của người tạo; chỉ admin được chọn không gian khác (kể cả `admin`). */
+  namespace: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{1,31}$/, "Không gian không hợp lệ")
+    .optional(),
   template: z.enum(templateIds as [string, ...string[]]),
   title: z.string().trim().max(120).optional(),
   platform: z.string().trim().max(40).optional(),
 });
 
 export async function createSite(actorId: string, input: z.infer<typeof CreateSiteSchema>): Promise<Site> {
+  const namespace = input.namespace ?? (await usernameOf(actorId));
+  if (!namespace) throw new SiteApiError(409, "Chọn tên người dùng trước khi tạo trang");
   const config = SiteSchema.parse({
-    slug: input.slug,
+    slug: `${namespace}/${input.slug}`,
     template: input.template,
     profile: { title: input.title || input.slug },
     ...(input.platform && { source: { platform: input.platform, pageId: "" } }),
@@ -139,7 +183,9 @@ export async function createSite(actorId: string, input: z.infer<typeof CreateSi
   return SiteSchema.parse(rpcResult(data, error));
 }
 
-export async function renameSite(actorId: string, slug: string, newSlug: string) {
+/** `newName` là phần tên trang; trang giữ nguyên không gian tên người dùng. */
+export async function renameSite(actorId: string, slug: string, newName: string) {
+  const newSlug = `${slug.split("/")[0]}/${newName}`;
   if (newSlug === slug) throw new SiteApiError(422, "Slug mới phải khác slug hiện tại");
   const db = siteWriter();
   const { error } = await db.rpc("rename_site", { actor_id: actorId, target_slug: slug, new_slug: newSlug });

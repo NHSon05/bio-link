@@ -8,11 +8,14 @@ import { latestMailLink } from "./mailpit";
 const admin = localAdmin();
 const suffix = randomUUID();
 const password = `P4ssword-${randomUUID()}`;
-const assigned = SiteSchema.parse({ slug: `alpha-${suffix}`, profile: { title: "Trang Alpha" } });
-const other = SiteSchema.parse({ slug: `beta-${suffix}`, profile: { title: "Trang Beta" } });
-const created = `gamma-${suffix}`;
-const renamed = `delta-${suffix}`;
-const firstSite = `first-${suffix}`;
+// Tên người dùng (AD-13) của admin và của tài khoản tự đăng ký.
+const adminName = `a-${suffix.slice(0, 8)}`;
+const newName = `r-${suffix.slice(0, 8)}`;
+const assigned = SiteSchema.parse({ slug: `${adminName}/alpha`, profile: { title: "Trang Alpha" } });
+const other = SiteSchema.parse({ slug: `${adminName}/beta`, profile: { title: "Trang Beta" } });
+const created = `${adminName}/gamma`;
+const renamed = `${adminName}/delta`;
+const firstSite = `${newName}/first`;
 const users = new Map<string, { id: string; email: string }>();
 const path = (site: Site) => `/api/sites/${site.slug}`;
 const history = (site: Site) => `${path(site)}/versions`;
@@ -48,6 +51,7 @@ test.beforeAll(async () => {
      cross join (values (:'viewer'::uuid, 'viewer'), (:'editor'::uuid, 'editor')) as assignment(user_id, role)
      where site.slug = :'assigned';
      insert into public.site_admins (user_id) values (:'admin'::uuid);
+     insert into public.profiles (user_id, username) values (:'admin'::uuid, :'admin_name');
      commit;`,
     {
       assigned: assigned.slug,
@@ -57,6 +61,7 @@ test.beforeAll(async () => {
       viewer: viewer.id,
       editor: editor.id,
       admin: owner.id,
+      admin_name: adminName,
     },
   );
 });
@@ -95,7 +100,8 @@ async function signIn(page: Page, name: string, method: "password" | "google") {
 // Tài khoản chưa có trang được mời tạo trang đầu tiên, và vẫn không đọc được trang của người khác.
 async function expectAwaitingAccess(page: Page) {
   await expect(page.getByRole("heading", { name: "Tạo trang đầu tiên" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Tạo trang", exact: true })).toBeVisible();
+  // Tài khoản mới chọn tên người dùng trước khi tạo trang (ME-2).
+  await expect(page.getByRole("button", { name: "Lưu tên người dùng", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Đăng xuất" })).toBeVisible();
   const list = await page.request.get("/api/sites");
   expect(list.status()).toBe(200);
@@ -140,12 +146,20 @@ test("ACCESS-2 OWN-1 a verified registration starts with no sites and creates it
   await expect(page).toHaveURL("/");
   await expectAwaitingAccess(page);
 
-  // Chọn template, đặt slug, rồi vào thẳng trình sửa của trang mới.
-  await page.getByLabel("Slug", { exact: true }).fill(firstSite);
+  // Chọn tên người dùng một lần, rồi template trên lưới và slug, rồi vào thẳng trình sửa của trang mới.
+  await page.getByLabel("Tên người dùng", { exact: true }).fill(newName);
+  await page.getByRole("button", { name: "Lưu tên người dùng", exact: true }).click();
+  await expect(page.getByText(`/${newName}/`, { exact: true })).toBeVisible();
+  const picker = page.getByRole("group", { name: "Template" });
+  await expect(picker.getByRole("button", { name: /^Classic/ })).toHaveAttribute("aria-pressed", "true");
+  await picker.getByRole("button", { name: /^Shop grid/ }).click();
+  await expect(picker.getByRole("button", { name: /^Shop grid/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByLabel("Slug", { exact: true }).fill("first");
   await page.getByRole("button", { name: "Tạo trang", exact: true }).click();
-  await expect(page).toHaveURL(`/?tab=bio&slug=${firstSite}`);
-  await expect(page.getByRole("textbox", { name: "Tên", exact: true })).toHaveValue(firstSite);
+  await expect(page).toHaveURL(`/?tab=bio&slug=${encodeURIComponent(firstSite)}`);
+  await expect(page.getByRole("textbox", { name: "Tên", exact: true })).toHaveValue("first");
   await expect(page.getByRole("textbox", { name: "Tên", exact: true })).toBeEditable();
+  expect((await (await page.request.get(`/api/sites/${firstSite}`)).json()).template).toBe("shop-grid");
 });
 
 test("ACCESS-2 a first Google sign-in starts with zero site access", async ({ page }) => {
@@ -301,7 +315,7 @@ test("ADMIN-1 ADMIN-2 the admin tab keeps unsaved edits on other sites and follo
   await page.getByRole("link", { name: "Quản lý trang", exact: true }).click();
   await expect(page.getByText(`/${assigned.slug} có thay đổi chưa lưu`)).toBeVisible();
   await expect(page.getByRole("button", { name: "Đổi slug", exact: true })).toBeDisabled();
-  await page.getByLabel("Slug", { exact: true }).fill(created);
+  await page.getByLabel("Slug", { exact: true }).fill("gamma");
   await page.getByRole("button", { name: "Tạo trang", exact: true }).click();
   await expect(picker).toContainText(`/${created}`);
 
@@ -312,12 +326,12 @@ test("ADMIN-1 ADMIN-2 the admin tab keeps unsaved edits on other sites and follo
   await expect(title).toHaveValue("Chưa lưu của admin");
 
   await picker.click();
-  await page.getByRole("option", { name: `${created} · /${created}` }).click();
+  await page.getByRole("option", { name: `gamma · /${created}` }).click();
   await page.getByRole("link", { name: "Quản lý trang", exact: true }).click();
-  await page.getByLabel("Slug mới", { exact: true }).fill(renamed);
+  await page.getByLabel("Slug mới", { exact: true }).fill("delta");
   await page.getByRole("button", { name: "Đổi slug", exact: true }).click();
   await expect(picker).toContainText(`/${renamed}`);
   await picker.click();
-  await expect(page.getByRole("option", { name: `${created} · /${renamed}` })).toBeVisible();
+  await expect(page.getByRole("option", { name: `gamma · /${renamed}` })).toBeVisible();
   await expect(page.getByRole("option", { name: new RegExp(`/${created}$`) })).toHaveCount(0);
 });

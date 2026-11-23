@@ -94,6 +94,17 @@ test("Workspace tracks public traffic and carries bio, template and product edit
   await page.getByRole("button", { name: "Cập nhật bản nháp" }).click();
   await page.getByRole("button", { name: "Xuất bản", exact: true }).click();
   await expect(page.getByText(/Đã xuất bản\. Trang công khai/)).toBeVisible();
+  // BUILD-3: chờ CDN, rồi "Đã lên CDN" khi job build báo xong (BUILD-2).
+  await expect(page.getByText("Đang cập nhật CDN…", { exact: true })).toBeVisible();
+  const { id } = await (await page.request.get(`/api/sites/${slug}/builds/latest`)).json();
+  for (const status of ["running", "succeeded"]) {
+    const report = await page.request.post(`/api/internal/builds/${id}`, {
+      headers: { Authorization: "Bearer callback-test-only" },
+      data: { status },
+    });
+    expect(report.status(), await report.text()).toBe(200);
+  }
+  await expect(page.getByText("Đã lên CDN", { exact: true })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("link", { name: "Website", exact: true }).click();
   await expect(
     page.frameLocator('iframe[title="Website đã xuất bản"]').getByText("Sổ tay A5", { exact: true }).first(),

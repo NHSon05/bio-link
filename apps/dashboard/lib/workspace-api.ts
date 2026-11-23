@@ -16,7 +16,8 @@ export type SiteSummary = {
   publishedSlug: string | null;
 };
 
-export type Me = { userId: string; email: string | null; isAdmin: boolean };
+/** `username` là đoạn đầu của URL /{username}/{slug}; `null` khi chưa chọn (ME-2). */
+export type Me = { userId: string; email: string | null; isAdmin: boolean; username: string | null };
 export type Role = "editor" | "viewer";
 export type Member = { userId: string; email: string; role: Role | "owner" };
 export type NewSite = { slug: string; template: string; title?: string; platform?: string };
@@ -28,6 +29,7 @@ export type WorkspaceApi = {
   save(site: Site, publish: boolean): Promise<Site>;
   traffic(slug: string, signal: AbortSignal): Promise<TrafficDay[]>;
   me(signal: AbortSignal): Promise<Me>;
+  claimUsername(username: string): Promise<unknown>;
   upload(slug: string, file: File): Promise<{ url: string }>;
   createSite(site: NewSite): Promise<Site>;
   renameSite(slug: string, newSlug: string): Promise<unknown>;
@@ -35,6 +37,17 @@ export type WorkspaceApi = {
   members(slug: string, signal: AbortSignal): Promise<Member[]>;
   setMember(slug: string, email: string, role: Role): Promise<Member>;
   removeMember(slug: string, userId: string): Promise<unknown>;
+  /** BUILD-3; `null` khi trang chưa có build nào. */
+  latestBuild(slug: string, signal: AbortSignal): Promise<Build | null>;
+  rebuild(slugs: string[]): Promise<unknown>;
+};
+
+export type Build = {
+  id: number;
+  status: "queued" | "running" | "succeeded" | "failed";
+  error: string | null;
+  liveUpdatedAt: string | null;
+  publishedUpdatedAt: string | null;
 };
 
 const json = (method: string, body: unknown) => ({
@@ -56,6 +69,7 @@ const liveApi: WorkspaceApi = {
     }),
   traffic: (slug, signal) => siteRequest("/api/sites/" + slug + "/traffic", { signal }),
   me: (signal) => siteRequest("/api/me", { signal }),
+  claimUsername: (username) => siteRequest("/api/me/username", json("POST", { username })),
   upload(slug, file) {
     const body = new FormData();
     body.set("file", file);
@@ -68,6 +82,12 @@ const liveApi: WorkspaceApi = {
   setMember: (slug, email, role) => siteRequest("/api/sites/" + slug + "/members", json("PUT", { email, role })),
   removeMember: (slug, userId) =>
     siteRequest("/api/sites/" + slug + "/members/" + encodeURIComponent(userId), { method: "DELETE" }),
+  latestBuild: (slug, signal) =>
+    siteRequest<Build>("/api/sites/" + slug + "/builds/latest", { signal }).catch((e: Error & { status?: number }) => {
+      if (e.status === 404) return null;
+      throw e;
+    }),
+  rebuild: (slugs) => siteRequest("/api/builds", json("POST", { slugs })),
 };
 
 export const WorkspaceApiContext = createContext(liveApi);
