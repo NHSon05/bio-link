@@ -114,9 +114,9 @@ Publishes the current draft and records a version.
 - `403` viewer. `404` unknown or unassigned slug. `422` note too long.
 - Side effect: queues a build for this slug (`BUILD-1`). A failed build hook call does not change the `200` result.
 
-### SITE-5 — `PUT /api/sites/{slug}` · Implemented, deprecated
+### SITE-5 — `PUT /api/sites/{slug}` · Implemented
 
-Saves a full config and publishes it in one call. Same body and errors as `SITE-3`, same result and side effects as `SITE-4`. Kept for existing scripts; remove once unused.
+Saves a full config and publishes it in one call. Same body and errors as `SITE-3`, same result and side effects as `SITE-4`. The editor's "Xuất bản" uses it: saving and publishing in one locked call means a concurrent `PATCH` cannot slip between them (F2-11).
 
 ## Versions
 
@@ -125,9 +125,8 @@ Saves a full config and publishes it in one call. Same body and errors as `SITE-
 Lists published versions, newest first, at most 100 per page.
 
 - `before` (optional): positive integer; returns versions with `id < before`. Use the last `id` of a page as the next cursor. A page with fewer than 100 items is the last one.
-- `200` `Version[]`
+- `200` `Version[]`; each item includes `published_by_email: string | null` (null when the publisher's account is gone).
 - `404` unknown or unassigned slug. `422` invalid `before`.
-- Proposed (F2-10): add `published_by_email: string | null` to each item.
 
 ### VER-2 — `POST /api/sites/{slug}/versions` · Implemented
 
