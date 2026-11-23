@@ -35,6 +35,17 @@ export type WorkspaceApi = {
   members(slug: string, signal: AbortSignal): Promise<Member[]>;
   setMember(slug: string, email: string, role: Role): Promise<Member>;
   removeMember(slug: string, userId: string): Promise<unknown>;
+  /** BUILD-3; `null` khi trang chưa có build nào. */
+  latestBuild(slug: string, signal: AbortSignal): Promise<Build | null>;
+  rebuild(slugs: string[]): Promise<unknown>;
+};
+
+export type Build = {
+  id: number;
+  status: "queued" | "running" | "succeeded" | "failed";
+  error: string | null;
+  liveUpdatedAt: string | null;
+  publishedUpdatedAt: string | null;
 };
 
 const json = (method: string, body: unknown) => ({
@@ -68,6 +79,12 @@ const liveApi: WorkspaceApi = {
   setMember: (slug, email, role) => siteRequest("/api/sites/" + slug + "/members", json("PUT", { email, role })),
   removeMember: (slug, userId) =>
     siteRequest("/api/sites/" + slug + "/members/" + encodeURIComponent(userId), { method: "DELETE" }),
+  latestBuild: (slug, signal) =>
+    siteRequest<Build>("/api/sites/" + slug + "/builds/latest", { signal }).catch((e: Error & { status?: number }) => {
+      if (e.status === 404) return null;
+      throw e;
+    }),
+  rebuild: (slugs) => siteRequest("/api/builds", json("POST", { slugs })),
 };
 
 export const WorkspaceApiContext = createContext(liveApi);

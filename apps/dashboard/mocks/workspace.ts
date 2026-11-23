@@ -60,6 +60,9 @@ export function mockWorkspaceApi(userId: string): WorkspaceApi {
     members: unavailable,
     setMember: unavailable,
     removeMember: unavailable,
+    // Dữ liệu mẫu không build lên CDN.
+    latestBuild: async () => null,
+    rebuild: unavailable,
     async traffic(slug, signal) {
       signal.throwIfAborted();
       const index = fixtures.findIndex((site) => site.slug === slug);

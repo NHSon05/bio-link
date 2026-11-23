@@ -239,7 +239,7 @@ The build job reports progress. Not for browsers.
 - `401` missing or wrong token. `404` unknown build. `409` transition not allowed (only `queued → running → succeeded | failed`; a superseded build answers `409`, and the job exits without deploying). `422` invalid body.
 - `POST /api/internal/builds/cron` (same auth, no body) creates a full `cron` build already `running`, fails `running` builds older than one hour, and answers like `running` above. The workflow calls it on its hourly schedule.
 
-### BUILD-3 — `GET /api/sites/{slug}/builds/latest` · Proposed (design for review)
+### BUILD-3 — `GET /api/sites/{slug}/builds/latest` · Implemented
 
 Any role on the site.
 
@@ -252,19 +252,20 @@ Any role on the site.
     "requestedAt": "…",
     "finishedAt": "…",
     "error": null,
-    "liveUpdatedAt": "…"
+    "liveUpdatedAt": "…",
+    "publishedUpdatedAt": "…"
   }
   ```
-  `status` is `queued`, `running`, `succeeded`, or `failed`. `liveUpdatedAt` is the `updatedAt` of the newest version published before the last successful build covering this slug started, or `null` if none has. The editor shows "đã lên CDN" when it equals the published config's `updatedAt`, otherwise "đang cập nhật" (or "build lỗi" when `status` is `failed`).
+  `status` is `queued`, `running`, `succeeded`, or `failed`. `liveUpdatedAt` is the `updatedAt` of the newest version published before the last successful build covering this slug started, or `null` if none has. `publishedUpdatedAt` is the published config's `updatedAt` (`null` if never published). The editor shows "Đã lên CDN" when the two are equal, "Build lỗi" when `status` is `failed`, and otherwise "Đang cập nhật CDN…", checking again every 5 seconds. A request merged into a queued build keeps that build's `reason`.
 - `404` unknown or unassigned slug, or no build yet.
 
-### BUILD-4 — `POST /api/builds` · Proposed (design for review)
+### BUILD-4 — `POST /api/builds` · Implemented
 
-Manually queues a build (admin), for example after a failed deploy. Same merge and hook rules as `BUILD-1`, with `reason: "manual"`.
+Manually queues a build, for example after a failed deploy. Admins can build anything; an owner can rebuild only sites they own (the editor's "Build lại" button). Same merge and hook rules as `BUILD-1`, with `reason: "manual"`.
 
 - Body: `{ "slugs"?: string[] }`. Empty or missing means a full build.
 - `202` `{ "id": number, "status": "queued" }`
-- `403` non-admin. `422` unknown slug in the list.
+- `403` neither admin nor the owner of every listed slug; a full build is admin-only. `422` invalid slug, or a slug that does not exist or the caller cannot read.
 
 ## Public artifacts (CDN)
 

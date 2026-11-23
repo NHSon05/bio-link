@@ -3,10 +3,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { connection } from "next/server";
 import { z } from "zod";
-import { readBody, rpcResult } from "./store";
+import { isAdmin, readBody, rpcResult } from "./store";
 import { SiteApiError, siteWriter } from "./supabase";
 
-type BuildReason = "publish" | "restore" | "rename" | "delete";
+type BuildReason = "publish" | "restore" | "rename" | "delete" | "manual";
 const queuedBuild = z.object({ id: z.number().int().positive(), hook: z.boolean() });
 
 /** Xếp build sau khi thay đổi trang đã lưu để lỗi CI không làm hỏng phản hồi của thao tác đó. */
@@ -26,7 +26,11 @@ export async function queueLandingBuild(db: SupabaseClient, actorId: string, rea
     console.error("Không thể xếp lượt build landing.", { reason, slugs, error });
     return;
   }
+  await dispatchBuild(buildId, reason, slugs);
+}
 
+/** Gọi GitHub repository_dispatch; lỗi chỉ ghi log, build vẫn `queued` để job sau hoặc cron nhận. */
+async function dispatchBuild(buildId: number, reason: BuildReason, slugs: string[]) {
   const token = process.env.BUILD_HOOK_TOKEN?.trim();
   if (!token) return;
   const repo = process.env.BUILD_REPO?.trim();
@@ -57,6 +61,45 @@ export async function queueLandingBuild(db: SupabaseClient, actorId: string, rea
       error: error instanceof Error ? error.name : "UnknownError",
     });
   }
+}
+
+/** BUILD-4: admin build bất kỳ; chủ sở hữu chỉ build lại trang của mình (không build toàn bộ). */
+export async function requestBuild(db: SupabaseClient, actorId: string, slugs: string[]) {
+  const [admin, { data: sites, error }] = await Promise.all([
+    isAdmin(db),
+    slugs.length ? db.from("sites").select("slug, site_members(role)").in("slug", slugs) : { data: [], error: null },
+  ]);
+  if (error) throw error;
+  const found = new Map((sites ?? []).map((site) => [site.slug, site.site_members]));
+  const unknown = slugs.filter((slug) => !found.has(slug));
+  if (unknown.length) throw new SiteApiError(422, `Không tìm thấy slug: ${unknown.join(", ")}`);
+  const owner = slugs.length > 0 && [...found.values()].every((members) => members.some((m) => m.role === "owner"));
+  if (!admin && !owner) throw new SiteApiError(403, "Chỉ quản trị viên hoặc chủ sở hữu được build lại");
+
+  const writer = siteWriter();
+  const { data, error: queueError } = await writer.rpc("queue_build", {
+    actor_id: actorId,
+    build_reason: "manual",
+    build_slugs: slugs,
+  });
+  const build = queuedBuild.parse(rpcResult(data, queueError));
+  if (build.hook) await dispatchBuild(build.id, "manual", slugs);
+  return { id: build.id, status: "queued" as const };
+}
+
+/** BUILD-3: build gần nhất của slug và bản đang trên CDN. Người gọi phải đọc được trang (RLS). */
+export async function latestBuild(db: SupabaseClient, slug: string) {
+  const { data: site, error } = await db
+    .from("sites")
+    .select("publishedUpdatedAt:published_config->>updatedAt")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!site) throw new SiteApiError(404, "Không tìm thấy slug");
+  const { data, error: buildError } = await siteWriter().rpc("latest_site_build", { target_slug: slug });
+  const build = rpcResult(data, buildError);
+  if (!build) throw new SiteApiError(404, "Chưa có build nào");
+  return { ...build, publishedUpdatedAt: site.publishedUpdatedAt ?? null };
 }
 
 const ReportSchema = z.object({

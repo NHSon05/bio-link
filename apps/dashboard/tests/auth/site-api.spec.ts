@@ -650,3 +650,50 @@ test("MEDIA-1 uploads an image as WebP for editors", async ({ request }) => {
     422,
   );
 });
+
+test("BUILD-3 BUILD-4 show the latest build and let admins and owners rebuild", async ({ request }) => {
+  const latest = async (s: Site | string, name: Actor | "owner") =>
+    request.get(path(s) + "/builds/latest", { headers: await as(name) });
+  const rebuild = async (name: Actor | "owner", data?: unknown) =>
+    request.post("/api/builds", { headers: await as(name), ...(data !== undefined && { data }) });
+
+  // Chỉ admin hoặc chủ sở hữu; không ai ngoài admin build toàn bộ.
+  for (const name of ["nobody", "viewer", "editor"] as const) {
+    await expectError(await rebuild(name, { slugs: [assigned.slug] }), name === "nobody" ? 422 : 403);
+    await expectError(await rebuild(name), 403);
+  }
+  await expectError(await rebuild("owner", { slugs: [assigned.slug] }), 422);
+  await expectError(await rebuild("admin", { slugs: [site("missing").slug] }), 422);
+  await expectError(await rebuild("admin", { slugs: ["Bad Slug"] }), 422);
+
+  const queued = await rebuild("admin", { slugs: [assigned.slug] });
+  expect(queued.status()).toBe(202);
+  const { id } = await queued.json();
+  expect(await queued.json()).toEqual({ id: expect.any(Number), status: "queued" });
+  const owned = await rebuild("owner", { slugs: [site("own-1").slug] });
+  expect(owned.status()).toBe(202);
+
+  // Mọi vai trò trên trang đều xem được; người ngoài nhận 404.
+  await expectError(await latest(assigned, "nobody"), 404);
+  // Build toàn bộ (cron ở BUILD-2) phủ cả trang chưa xuất bản: không có bản nào trên CDN.
+  expect(await (await latest(draftOnly, "viewer")).json()).toMatchObject({
+    publishedUpdatedAt: null,
+    liveUpdatedAt: null,
+  });
+  const before = await (await latest(assigned, "viewer")).json();
+  // Có thể đã gộp vào build `publish` còn queued trong 60 giây, nên không kiểm tra `reason`.
+  expect(before).toMatchObject({ status: "queued", publishedUpdatedAt: expect.any(String) });
+  expect(before.id).toBeGreaterThanOrEqual(id);
+
+  // Job chạy xong → bản đã xuất bản lên CDN.
+  const job = { Authorization: "Bearer callback-test-only" };
+  const started = await request.post(`/api/internal/builds/${before.id}`, {
+    headers: job,
+    data: { status: "running" },
+  });
+  expect(started.status()).toBe(200);
+  await request.post(`/api/internal/builds/${before.id}`, { headers: job, data: { status: "succeeded" } });
+  const after = await (await latest(assigned, "editor")).json();
+  expect(after).toMatchObject({ id: before.id, status: "succeeded" });
+  expect(after.liveUpdatedAt).toBe(after.publishedUpdatedAt);
+});

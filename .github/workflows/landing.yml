@@ -6,7 +6,8 @@ on:
   repository_dispatch:
     types: [build-landing]
   schedule:
-    - cron: "17 * * * *"
+    # Đổi phút để GitHub đăng ký lại lịch (lịch cũ chưa từng chạy).
+    - cron: "23 * * * *"
   workflow_dispatch:
 
 permissions:

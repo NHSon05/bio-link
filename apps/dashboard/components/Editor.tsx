@@ -8,6 +8,7 @@ import { useWorkspaceApi, type SiteSummary } from "@/lib/workspace-api";
 import { Panel, StatusPill } from "@/components/panel";
 import { Button } from "@/components/ui/button";
 import { AdminPanel, CreateSite } from "@/components/workspace/admin";
+import { BuildStatus } from "@/components/workspace/build-status";
 import { Design } from "@/components/workspace/design";
 import { HomeOverview } from "@/components/workspace/home";
 import { sections, WorkspaceShell, workspaceUrl } from "@/components/workspace/navigation";
@@ -30,6 +31,8 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
   const [notices, setNotices] = useState<Record<string, Notice | undefined>>({});
   const [listError, setListError] = useState("");
   const [listVersion, setListVersion] = useState(0);
+  // Tăng sau mỗi lần xuất bản để huy hiệu CDN hỏi lại trạng thái build.
+  const [published, setPublished] = useState(0);
   const [siteError, setSiteError] = useState<{ slug: string; message: string } | null>(null);
   const current = sites?.find((s) => s.slug === params.get("slug")) ?? sites?.[0];
   const slug = current?.slug ?? "";
@@ -82,6 +85,7 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
     setNotices((prev) => ({ ...prev, [slug]: { kind: "saving", msg: "Đang lưu…" } }));
     try {
       const saved = await api.save(draft, publish);
+      if (publish) setPublished((n) => n + 1);
       setStates((prev) => ({ ...prev, [slug]: { saved, draft: saved } }));
       setSites(
         (prev) =>
@@ -223,6 +227,9 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
                 </div>
               </div>
               <footer className="sticky bottom-0 z-[5] flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 px-3 py-2 shadow-soft backdrop-blur-sm">
+                {current?.publishedSlug && (
+                  <BuildStatus slug={slug} canManage={!!current.canManage} published={published} />
+                )}
                 {current?.canEdit ? (
                   <>
                     <StatusPill dirty={dirty}>{dirty ? "Có thay đổi chưa lưu" : "Đã lưu"}</StatusPill>
