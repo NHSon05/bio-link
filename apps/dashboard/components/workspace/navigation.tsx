@@ -49,7 +49,7 @@ export const sections = [
     icon: ShoppingBag,
     keywords: "my affiliate products sản phẩm của tôi",
   },
-  { id: "admin", title: "Quản trị", icon: ShieldCheck, keywords: "admin thành viên quyền tạo xóa đổi slug" },
+  { id: "admin", title: "Quản lý trang", icon: ShieldCheck, keywords: "admin thành viên quyền tạo xóa đổi slug" },
 ] as const;
 export type Section = (typeof sections)[number]["id"];
 
@@ -62,7 +62,7 @@ export function workspaceUrl(view: Section, slug?: string) {
 
 type Props = {
   email: string;
-  isAdmin: boolean;
+  showAdmin: boolean;
   sites: SiteSummary[];
   slug: string;
   view: Section;
@@ -81,8 +81,8 @@ export function WorkspaceShell(props: Props) {
   );
 }
 
-function ShellContents({ email, isAdmin, sites, slug, view, saving, chooseSite, children }: Props) {
-  const visible = sections.filter((section) => section.id !== "admin" || isAdmin);
+function ShellContents({ email, showAdmin, sites, slug, view, saving, chooseSite, children }: Props) {
+  const visible = sections.filter((section) => section.id !== "admin" || showAdmin);
   const api = useWorkspaceApi();
   const { setOpenMobile } = useSidebar();
   const [open, setOpen] = useState(false);

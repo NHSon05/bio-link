@@ -11,12 +11,14 @@ export type SiteSummary = {
   template: string;
   platform: string | null;
   canEdit: boolean;
+  /** Admin hoặc chủ sở hữu: đổi slug, xóa, quản lý thành viên. */
+  canManage: boolean;
   publishedSlug: string | null;
 };
 
 export type Me = { userId: string; email: string | null; isAdmin: boolean };
 export type Role = "editor" | "viewer";
-export type Member = { userId: string; email: string; role: Role };
+export type Member = { userId: string; email: string; role: Role | "owner" };
 export type NewSite = { slug: string; template: string; title?: string; platform?: string };
 
 export type WorkspaceApi = {

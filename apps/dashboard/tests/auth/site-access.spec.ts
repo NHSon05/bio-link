@@ -12,6 +12,7 @@ const assigned = SiteSchema.parse({ slug: `alpha-${suffix}`, profile: { title: "
 const other = SiteSchema.parse({ slug: `beta-${suffix}`, profile: { title: "Trang Beta" } });
 const created = `gamma-${suffix}`;
 const renamed = `delta-${suffix}`;
+const firstSite = `first-${suffix}`;
 const users = new Map<string, { id: string; email: string }>();
 const path = (site: Site) => `/api/sites/${site.slug}`;
 const history = (site: Site) => `${path(site)}/versions`;
@@ -61,11 +62,12 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  testSql("delete from public.sites where slug in (:'assigned', :'other', :'created', :'renamed');", {
+  testSql("delete from public.sites where slug in (:'assigned', :'other', :'created', :'renamed', :'first');", {
     assigned: assigned.slug,
     other: other.slug,
     created,
     renamed,
+    first: firstSite,
   });
   const { data, error } = await admin.auth.admin.listUsers();
   if (error) throw error;
@@ -90,8 +92,10 @@ async function signIn(page: Page, name: string, method: "password" | "google") {
   await expect(page.getByRole("button", { name: "Đăng xuất" })).toBeVisible();
 }
 
+// Tài khoản chưa có trang được mời tạo trang đầu tiên, và vẫn không đọc được trang của người khác.
 async function expectAwaitingAccess(page: Page) {
-  await expect(page.getByRole("heading", { name: "Đang chờ cấp quyền truy cập" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tạo trang đầu tiên" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tạo trang", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Đăng xuất" })).toBeVisible();
   const list = await page.request.get("/api/sites");
   expect(list.status()).toBe(200);
@@ -117,7 +121,11 @@ test("ACCESS-1 guests cannot open the dashboard or use the site API", async ({ p
   );
 });
 
-test("ACCESS-2 verified email registration starts with zero site access", async ({ page, request, baseURL }) => {
+test("ACCESS-2 OWN-1 a verified registration starts with no sites and creates its first one", async ({
+  page,
+  request,
+  baseURL,
+}) => {
   const email = `registration-${suffix}@example.com`;
   await page.goto("/register");
   await page.getByLabel("Email", { exact: true }).fill(email);
@@ -131,6 +139,13 @@ test("ACCESS-2 verified email registration starts with zero site access", async 
   await page.getByRole("button", { name: "Xác nhận email", exact: true }).click();
   await expect(page).toHaveURL("/");
   await expectAwaitingAccess(page);
+
+  // Chọn template, đặt slug, rồi vào thẳng trình sửa của trang mới.
+  await page.getByLabel("Slug", { exact: true }).fill(firstSite);
+  await page.getByRole("button", { name: "Tạo trang", exact: true }).click();
+  await expect(page).toHaveURL(`/?tab=bio&slug=${firstSite}`);
+  await expect(page.getByRole("textbox", { name: "Tên", exact: true })).toHaveValue(firstSite);
+  await expect(page.getByRole("textbox", { name: "Tên", exact: true })).toBeEditable();
 });
 
 test("ACCESS-2 a first Google sign-in starts with zero site access", async ({ page }) => {
@@ -221,10 +236,13 @@ test("ACCESS-5 the admin sees and can edit all sites", async ({ page, baseURL })
 
   const list = await page.request.get("/api/sites");
   expect(list.status()).toBe(200);
-  expect(await list.json()).toMatchObject([
-    { slug: assigned.slug, canEdit: true },
-    { slug: other.slug, canEdit: true },
-  ]);
+  // Admin thấy mọi trang, kể cả trang người dùng tự tạo trong các test trước.
+  expect(await list.json()).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ slug: assigned.slug, canEdit: true, canManage: true }),
+      expect.objectContaining({ slug: other.slug, canEdit: true, canManage: true }),
+    ]),
+  );
   for (const site of [assigned, other]) {
     expect((await page.request.get(path(site))).status()).toBe(200);
     expect((await page.request.get(history(site))).status()).toBe(200);
@@ -280,7 +298,7 @@ test("ADMIN-1 ADMIN-2 the admin tab keeps unsaved edits on other sites and follo
   await title.fill("Chưa lưu của admin");
   const picker = page.getByRole("combobox", { name: "Chọn slug" });
 
-  await page.getByRole("link", { name: "Quản trị", exact: true }).click();
+  await page.getByRole("link", { name: "Quản lý trang", exact: true }).click();
   await expect(page.getByText(`/${assigned.slug} có thay đổi chưa lưu`)).toBeVisible();
   await expect(page.getByRole("button", { name: "Đổi slug", exact: true })).toBeDisabled();
   await page.getByLabel("Slug", { exact: true }).fill(created);
@@ -295,7 +313,7 @@ test("ADMIN-1 ADMIN-2 the admin tab keeps unsaved edits on other sites and follo
 
   await picker.click();
   await page.getByRole("option", { name: `${created} · /${created}` }).click();
-  await page.getByRole("link", { name: "Quản trị", exact: true }).click();
+  await page.getByRole("link", { name: "Quản lý trang", exact: true }).click();
   await page.getByLabel("Slug mới", { exact: true }).fill(renamed);
   await page.getByRole("button", { name: "Đổi slug", exact: true }).click();
   await expect(picker).toContainText(`/${renamed}`);

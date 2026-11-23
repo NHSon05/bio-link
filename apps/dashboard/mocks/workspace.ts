@@ -33,6 +33,7 @@ export function mockWorkspaceApi(userId: string): WorkspaceApi {
           template: draft.template,
           platform: draft.source?.platform ?? null,
           canEdit: true,
+          canManage: false,
           publishedSlug: slug,
         };
       });

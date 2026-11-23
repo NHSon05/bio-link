@@ -16,7 +16,7 @@ const roles: { value: Role; label: string }[] = [
   { value: "viewer", label: "Chỉ xem" },
 ];
 
-/** Admin: tạo, đổi slug, xóa trang và giao quyền (ADMIN-1…3, MEM-1…3). */
+/** Tạo trang (mọi người); đổi slug, xóa và giao quyền cho admin hoặc chủ sở hữu (ADMIN-1…3, MEM-1…3). */
 export function AdminPanel({
   site,
   dirty,
@@ -30,19 +30,23 @@ export function AdminPanel({
 }) {
   return (
     <div className="grid gap-5">
-      <h1 className="workspace-title">Quản trị</h1>
+      <h1 className="workspace-title">Quản lý trang</h1>
       <div className="grid items-start gap-5 xl:grid-cols-2">
         <CreateSite changed={changed} />
-        {site && <Members key={site.slug} slug={site.slug} />}
-        {site && dirty && (
+        {site?.canManage && <Members key={site.slug} slug={site.slug} />}
+        {site?.canManage && dirty && (
           <Alert className="xl:col-span-2">
             <AlertDescription>
               /{site.slug} có thay đổi chưa lưu. Lưu hoặc bỏ thay đổi trước khi đổi slug hay xóa trang.
             </AlertDescription>
           </Alert>
         )}
-        {site && <RenameSite key={"rename-" + site.slug} slug={site.slug} locked={dirty} changed={changed} />}
-        {site && <DeleteSite key={"delete-" + site.slug} slug={site.slug} locked={dirty} changed={changed} />}
+        {site?.canManage && (
+          <RenameSite key={"rename-" + site.slug} slug={site.slug} locked={dirty} changed={changed} />
+        )}
+        {site?.canManage && (
+          <DeleteSite key={"delete-" + site.slug} slug={site.slug} locked={dirty} changed={changed} />
+        )}
       </div>
     </div>
   );
@@ -82,11 +86,14 @@ function submit(handler: (form: FormData, element: HTMLFormElement) => void) {
 
 const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
 
-function CreateSite({ changed }: { changed: (next?: string) => void }) {
+export function CreateSite({ changed }: { changed: (next?: string) => void }) {
   const api = useWorkspaceApi();
   const { busy, run, alert } = useAction();
   return (
-    <Panel title="Tạo trang mới" hint="Trang mới là bản nháp trống, chưa công khai cho đến khi xuất bản.">
+    <Panel
+      title="Tạo trang mới"
+      hint="Chọn template và slug. Trang là bản nháp cho đến khi xuất bản. Mỗi tài khoản tạo tối đa 3 trang."
+    >
       <form
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={submit(async (form) => {
@@ -160,39 +167,48 @@ function Members({ slug }: { slug: string }) {
       );
     });
   return (
-    <Panel title={`Thành viên · /${slug}`} hint="Quản trị viên luôn có toàn quyền nên không cần thêm vào đây.">
+    <Panel
+      title={`Thành viên · /${slug}`}
+      hint="Biên tập viên sửa và xuất bản; người chỉ xem không sửa được. Chủ sở hữu chỉ quản trị viên mới đổi được."
+    >
       <div className="grid gap-3">
         {members?.length === 0 && <p className="text-sm text-muted-foreground">Chưa có thành viên.</p>}
         <ul className="grid gap-2" aria-label="Danh sách thành viên">
           {members?.map((m) => (
             <li key={m.userId} className="flex items-center gap-2">
               <span className="min-w-0 flex-1 truncate text-sm">{m.email}</span>
-              <Select value={m.role} disabled={busy} onValueChange={(role) => save(m.email, role as Role)}>
-                <SelectTrigger aria-label={`Quyền của ${m.email}`} className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={busy}
-                aria-label={`Gỡ ${m.email}`}
-                onClick={() =>
-                  run(async () => {
-                    await api.removeMember(slug, m.userId);
-                    setMembers((prev) => prev?.filter((x) => x.userId !== m.userId) ?? null);
-                  })
-                }
-              >
-                <Trash2 />
-              </Button>
+              {m.role === "owner" ? (
+                <span className="w-32 text-sm text-muted-foreground">Chủ sở hữu</span>
+              ) : (
+                <>
+                  <Select value={m.role} disabled={busy} onValueChange={(role) => save(m.email, role as Role)}>
+                    <SelectTrigger aria-label={`Quyền của ${m.email}`} className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    aria-label={`Gỡ ${m.email}`}
+                    onClick={() =>
+                      run(async () => {
+                        await api.removeMember(slug, m.userId);
+                        setMembers((prev) => prev?.filter((x) => x.userId !== m.userId) ?? null);
+                      })
+                    }
+                  >
+                    <Trash2 />
+                  </Button>
+                </>
+              )}
             </li>
           ))}
         </ul>

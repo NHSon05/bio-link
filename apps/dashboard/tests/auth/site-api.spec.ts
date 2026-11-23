@@ -17,13 +17,13 @@ const other = site("api-beta", "Trang Beta");
 const draftOnly = site("api-draft");
 const actors = ["nobody", "viewer", "editor", "admin"] as const;
 type Actor = (typeof actors)[number];
-const users = new Map<Actor | "newcomer", { id: string; email: string }>();
+const users = new Map<Actor | "newcomer" | "owner", { id: string; email: string }>();
 const tokens = new Map<string, { token: string; at: number }>();
 
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
-  for (const name of [...actors, "newcomer"] as const) {
+  for (const name of [...actors, "newcomer", "owner"] as const) {
     const email = `api-${name}-${suffix}@example.com`;
     const { data, error } = await admin.auth.admin.createUser({ email, email_confirm: true, password });
     if (error) throw error;
@@ -64,7 +64,7 @@ test.afterAll(async () => {
 });
 
 /** Test Auth issues 60-second tokens, so sign in again when a cached one is close to expiry. */
-async function as(name: Actor | "newcomer") {
+async function as(name: Actor | "newcomer" | "owner") {
   const cached = tokens.get(name);
   if (cached && Date.now() - cached.at < 40_000) return { Authorization: `Bearer ${cached.token}` };
   const { data, error } = await localAuth().auth.signInWithPassword({ email: users.get(name)!.email, password });
@@ -376,12 +376,11 @@ test("VER-2 restores a version as a new published version", async ({ request }) 
   await expectError(await request.post(path(assigned) + "/versions", { headers, data: {} }), 422);
 });
 
-test("ADMIN-1…3 MEM-1…3 reject non-admins with 403", async ({ request, baseURL }) => {
+test("ADMIN-2…3 MEM-1…3 reject users who are not admin or owner with 403", async ({ request, baseURL }) => {
   for (const name of ["nobody", "viewer", "editor"] as const) {
     const headers = await as(name);
     const slug = `x-${name}-${suffix}`;
     const cases: Promise<APIResponse>[] = [
-      request.post("/api/sites", { headers, data: { slug, template: "classic" } }),
       request.post(path(assigned) + "/rename", { headers, data: { newSlug: slug } }),
       request.delete(path(assigned), { headers, data: { confirm: assigned.slug } }),
       request.get(path(assigned) + "/members", { headers }),
@@ -399,6 +398,66 @@ test("ADMIN-1…3 MEM-1…3 reject non-admins with 403", async ({ request, baseU
   ]) {
     await expectError(await pending, 401);
   }
+});
+
+test("OWN-1 any user creates up to 3 sites and fully manages them as owner", async ({ request }) => {
+  const headers = await as("owner");
+  const owner = users.get("owner")!;
+  const mine = [1, 2, 3].map((n) => site(`own-${n}`).slug);
+  for (const slug of mine) {
+    const response = await request.post("/api/sites", { headers, data: { slug, template: "classic" } });
+    expect(response.status(), await response.text()).toBe(201);
+  }
+  await expectError(
+    await request.post("/api/sites", { headers, data: { slug: site("own-4").slug, template: "classic" } }),
+    403,
+  );
+  expect(await (await request.get("/api/sites", { headers })).json()).toEqual(
+    mine.map((slug) => expect.objectContaining({ slug, canEdit: true, canManage: true, publishedSlug: null })),
+  );
+  // Người khác vẫn không thấy trang của owner.
+  await expectError(await request.get(path(mine[0]), { headers: await as("nobody") }), 404);
+
+  // Sửa, xuất bản, tải ảnh như biên tập viên.
+  const draft = await (await request.get(path(mine[0]), { headers })).json();
+  expect(
+    (await request.patch(path(mine[0]), { headers, data: { ...draft, profile: { title: "Của tôi" } } })).status(),
+  ).toBe(200);
+  expect((await request.post(path(mine[0]), { headers })).status()).toBe(200);
+  const media = await request.post(path(mine[0]) + "/media", {
+    headers,
+    multipart: { file: { name: "a.png", mimeType: "image/png", buffer: await pngImage() } },
+  });
+  expect(media.status()).toBe(201);
+
+  // Quản lý thành viên, nhưng không tự đổi hay gỡ quyền chủ sở hữu.
+  const members = path(mine[0]) + "/members";
+  expect(await (await request.get(members, { headers })).json()).toEqual([
+    { userId: owner.id, email: owner.email, role: "owner" },
+  ]);
+  const viewer = users.get("viewer")!;
+  expect((await request.put(members, { headers, data: { email: viewer.email, role: "editor" } })).status()).toBe(200);
+  expect((await request.get(path(mine[0]), { headers: await as("viewer") })).status()).toBe(200);
+  await expectError(await request.put(members, { headers, data: { email: owner.email, role: "viewer" } }), 409);
+  await expectError(await request.delete(`${members}/${owner.id}`, { headers }), 409);
+  await expectError(await request.put(members, { headers, data: { email: viewer.email, role: "owner" } }), 422);
+  // Biên tập viên được mời không quản lý được trang.
+  await expectError(await request.get(members, { headers: await as("viewer") }), 403);
+  expect((await request.delete(`${members}/${viewer.id}`, { headers })).status()).toBe(204);
+
+  // Đổi slug, xóa trang; xóa xong thì tạo được trang mới trong giới hạn.
+  const renamed = site("own-renamed").slug;
+  expect((await request.post(path(mine[1]) + "/rename", { headers, data: { newSlug: renamed } })).status()).toBe(200);
+  expect((await request.delete(path(renamed), { headers, data: { confirm: renamed } })).status()).toBe(204);
+  expect(
+    (await request.post("/api/sites", { headers, data: { slug: site("own-5").slug, template: "classic" } })).status(),
+  ).toBe(201);
+  // Owner không đụng được trang của người khác.
+  await expectError(
+    await request.post(path(assigned) + "/rename", { headers, data: { newSlug: site("x").slug } }),
+    403,
+  );
+  await expectError(await request.delete(path(assigned), { headers, data: { confirm: assigned.slug } }), 403);
 });
 
 test("ADMIN-1 creates an empty draft from a template", async ({ request }) => {

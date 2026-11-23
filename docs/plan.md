@@ -89,6 +89,7 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 - [x] F3-5 List, assign, change, and remove members (`MEM-1`…`MEM-3`). Look users up by email.
 - [x] F3-6 Dashboard screens: site list actions for admins, a members dialog, a rename dialog with a warning about the Linktree banner URL. Built as panels on an admin-only "Quản trị" tab.
 - [x] F3-7 HTTP tests for every ID above, including non-admin `403` and the cases in the contract.
+- [x] F3-8 Self-service sites (AD-12): any signed-in user creates up to 3 sites from a template and owns them (edit, publish, rename, delete, members). A user with no sites gets the create form. Migration `20261124000000_site_owners.sql`, not applied to hosted yet. `OWN-1` tests.
 
 **Verification.** `pnpm test:auth` (2026-11-22, isolated local Supabase) → 56 passed, 1 skipped (mock-only spec); `tests/auth/site-api.spec.ts` covers the contract IDs above.
 

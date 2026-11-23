@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpRight, KeyRound, Undo2 } from "lucide-react";
+import { ArrowUpRight, Undo2 } from "lucide-react";
 import type { Site } from "@bio-link/schema";
-import { useWorkspaceApi, type Me, type SiteSummary } from "@/lib/workspace-api";
+import { useWorkspaceApi, type SiteSummary } from "@/lib/workspace-api";
 import { Panel, StatusPill } from "@/components/panel";
 import { Button } from "@/components/ui/button";
-import { AdminPanel } from "@/components/workspace/admin";
+import { AdminPanel, CreateSite } from "@/components/workspace/admin";
 import { Design } from "@/components/workspace/design";
-import { HomeOverview, MetricCards } from "@/components/workspace/home";
+import { HomeOverview } from "@/components/workspace/home";
 import { sections, WorkspaceShell, workspaceUrl } from "@/components/workspace/navigation";
 import { SitePreview } from "@/components/workspace/preview";
 import { ProductManager, type UpdateDraft } from "@/components/workspace/products";
@@ -22,8 +22,9 @@ type Notice = { kind: "saving" | "saved" | "error"; msg: string };
 export default function Editor({ email, landingUrl }: { email: string; landingUrl: string }) {
   const api = useWorkspaceApi();
   const params = useSearchParams();
-  const [me, setMe] = useState<Me | null>(null);
-  const view = sections.find((s) => s.id === params.get("tab") && (s.id !== "admin" || me?.isAdmin))?.id ?? "home";
+  // Ai đăng nhập cũng tạo được trang; dữ liệu mẫu thì không. Server vẫn kiểm tra quyền ở mọi API.
+  const manage = !api.sample;
+  const view = sections.find((s) => s.id === params.get("tab") && (s.id !== "admin" || manage))?.id ?? "home";
   const [sites, setSites] = useState<SiteSummary[] | null>(null);
   const [states, setStates] = useState<Record<string, SiteState>>({});
   const [notices, setNotices] = useState<Record<string, Notice | undefined>>({});
@@ -50,15 +51,6 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
       });
     return () => ctl.abort();
   }, [api, listVersion]);
-  useEffect(() => {
-    const ctl = new AbortController();
-    // Chỉ để ẩn/hiện chức năng quản trị; server vẫn kiểm tra quyền ở mọi API.
-    api
-      .me(ctl.signal)
-      .then(setMe)
-      .catch(() => {});
-    return () => ctl.abort();
-  }, [api]);
   useEffect(() => {
     if (!slug || loaded) return;
     const ctl = new AbortController();
@@ -122,13 +114,26 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
   }
 
   const error = listError || (siteError?.slug === slug && siteError.message);
+  /** Sau khi tạo, đổi slug hoặc xóa: mở `next` ở `tab` và tải lại danh sách. */
+  function changed(tab: "admin" | "bio", next?: string, previous?: string) {
+    // Slug có thể được dùng lại (xóa rồi tạo, đổi tên qua lại): chỉ bỏ bản nháp đã tải của slug bị ảnh hưởng.
+    const drop = <T,>(prev: Record<string, T>) => {
+      const rest = { ...prev };
+      for (const key of [next, previous]) if (key) delete rest[key];
+      return rest;
+    };
+    setStates(drop);
+    setNotices(drop);
+    window.history.pushState(null, "", workspaceUrl(tab, next));
+    setListVersion((v) => v + 1);
+  }
   const heading = {
     home: "Tổng quan",
     bio: "Link in bio",
     slug: "Thiết kế theo slug",
     website: "Website",
     products: "Sản phẩm affiliate",
-    admin: "Quản trị",
+    admin: "Quản lý trang",
   }[view];
   if (api.sample && view === "website" && params.get("display") === "page" && draft) {
     return <SitePreview key={slug} site={draft} landingUrl={landingUrl} published fullPage />;
@@ -136,7 +141,7 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
   return (
     <WorkspaceShell
       email={email}
-      isAdmin={!!me?.isAdmin}
+      showAdmin={manage}
       sites={sites ?? []}
       slug={slug}
       view={view}
@@ -150,37 +155,15 @@ export default function Editor({ email, landingUrl }: { email: string; landingUr
       {error ? (
         <p role="alert">{error}</p>
       ) : view === "admin" && sites ? (
-        <AdminPanel
-          site={current}
-          dirty={dirty}
-          changed={(next, previous) => {
-            // Slug có thể được dùng lại (xóa rồi tạo, đổi tên qua lại): chỉ bỏ bản nháp đã tải của slug bị ảnh hưởng.
-            const drop = <T,>(prev: Record<string, T>) => {
-              const rest = { ...prev };
-              for (const key of [next, previous]) if (key) delete rest[key];
-              return rest;
-            };
-            setStates(drop);
-            setNotices(drop);
-            window.history.pushState(null, "", workspaceUrl("admin", next));
-            setListVersion((v) => v + 1);
-          }}
-        />
+        <AdminPanel site={current} dirty={dirty} changed={(next, previous) => changed("admin", next, previous)} />
       ) : sites?.length === 0 ? (
-        <div className="grid gap-5">
-          <h1 className="workspace-title">{heading}</h1>
-          {view === "home" && <MetricCards views={null} clicks={null} count={0} />}
-          <Panel>
-            <div className="flex max-w-xl flex-col items-start gap-3 py-4">
-              <span className="rounded-full bg-olive p-3 text-ink">
-                <KeyRound size={22} />
-              </span>
-              <h2 className="text-2xl font-semibold">Đang chờ cấp quyền truy cập</h2>
-              <p className="text-muted-foreground">
-                Tài khoản của bạn chưa được giao trang nào. Liên hệ quản trị viên để được cấp quyền truy cập.
-              </p>
-            </div>
-          </Panel>
+        <div className="grid max-w-3xl gap-5">
+          <h1 className="workspace-title">Tạo trang đầu tiên</h1>
+          {manage ? (
+            <CreateSite changed={(next) => changed("bio", next)} />
+          ) : (
+            <p className="text-muted-foreground">Chưa có trang nào.</p>
+          )}
         </div>
       ) : !draft ? (
         <p role="status">Đang tải trang…</p>
