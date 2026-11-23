@@ -203,5 +203,15 @@ export async function listVersions(db: SupabaseClient, slug: string, before: num
   if (before !== undefined) query.lt("id", before);
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+
+  // auth.users không qua PostgREST; một trang có ít người xuất bản nên tra từng id.
+  const auth = siteWriter().auth.admin;
+  const emails = new Map(
+    await Promise.all(
+      [...new Set(data.map((v) => v.published_by).filter((id): id is string => !!id))].map(
+        async (id) => [id, (await auth.getUserById(id)).data.user?.email ?? null] as const,
+      ),
+    ),
+  );
+  return data.map((v) => ({ ...v, published_by_email: (v.published_by && emails.get(v.published_by)) ?? null }));
 }

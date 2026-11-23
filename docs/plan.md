@@ -18,7 +18,7 @@ Auth has its own plan, contract, and checklist under [docs/auth](auth/AUTH_PLAN.
 | --- | ---------------------------------------------- | ----------------- | ---------- | ------------------- |
 | F0  | Monorepo, schema, templates, runtime           | §5, §6, §7        | —          | Done                |
 | F1  | Dashboard auth                                 | §9                | F0         | In progress         |
-| F2  | Site editor: draft, publish, versions, preview | §7, §9            | F0, F1     | F2-10, F2-11 left   |
+| F2  | Site editor: draft, publish, versions, preview | §7, §9            | F0, F1     | Done                |
 | F3  | Site and access management (admin)             | §9                | F1, F2     | Done (builds in F5) |
 | F4  | Media uploads                                  | §7                | F1         | Thumbnails left     |
 | F5  | Build and deploy pipeline                      | §3, §9            | F2         | In progress         |
@@ -71,8 +71,8 @@ Recommended order: F1 → F2 → F3 and F4 in parallel → F5 → F6, F7, F8 in 
 - [x] F2-7 Astro `/preview` renders a draft with production templates (`PREV-1`).
 - [x] F2-8 Add HTTP tests for `SITE-1`…`SITE-5` and `VER-1`…`VER-2`, including the role matrix in the contract's [common rules](API_CONTRACT.md#common-rules).
 - [x] F2-9 Add `GET /api/me` so the editor can hide actions the user cannot perform (`ME-1`).
-- [ ] F2-10 Return `published_by` as an email or display name in the version list (`VER-1`).
-- [ ] F2-11 Decide whether to keep `PUT /api/sites/{slug}` (`SITE-5`). Remove it once no client uses it.
+- [x] F2-10 Return `published_by` as an email or display name in the version list (`VER-1`). Adds `published_by_email`.
+- [x] F2-11 Decide whether to keep `PUT /api/sites/{slug}` (`SITE-5`). Kept: the editor publishes with it, atomically.
 
 **Verification.** `pnpm test:auth` (2026-11-22, isolated local Supabase) → 56 passed, 1 skipped (mock-only spec); `tests/auth/site-api.spec.ts` covers the contract IDs above.
 

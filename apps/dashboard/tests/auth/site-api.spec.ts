@@ -323,7 +323,12 @@ test("SITE-4 publishes the draft with a note and records a version", async ({ re
   expect(published.profile).toEqual(draft.profile);
   expect(await (await request.get(path(assigned) + "?revision=published", { headers })).json()).toEqual(published);
   const [latest] = await (await request.get(path(assigned) + "/versions", { headers })).json();
-  expect(latest).toMatchObject({ note: "Ghi chú", published_by: users.get("editor")!.id, restored_from: null });
+  expect(latest).toMatchObject({
+    note: "Ghi chú",
+    published_by: users.get("editor")!.id,
+    published_by_email: users.get("editor")!.email,
+    restored_from: null,
+  });
 
   expect((await request.post(path(assigned), { headers })).status()).toBe(200); // body is optional
   await expectError(await request.post(path(assigned), { headers, data: { note: "x".repeat(501) } }), 422);
@@ -336,7 +341,14 @@ test("VER-1 pages versions newest first with a cursor", async ({ request }) => {
   ).json();
   expect(versions.length).toBeGreaterThan(2);
   expect(versions.map((v) => v.id)).toEqual([...versions.map((v) => v.id)].sort((a, b) => b - a));
-  expect(Object.keys(versions[0]).sort()).toEqual(["id", "note", "published_at", "published_by", "restored_from"]);
+  expect(Object.keys(versions[0]).sort()).toEqual([
+    "id",
+    "note",
+    "published_at",
+    "published_by",
+    "published_by_email",
+    "restored_from",
+  ]);
   const page = await (await request.get(`${path(assigned)}/versions?before=${versions[1].id}`, { headers })).json();
   expect(page.map((v: { id: number }) => v.id)).toEqual(versions.slice(2).map((v) => v.id));
   for (const before of ["abc", "0", "-1", "1.5"]) {
