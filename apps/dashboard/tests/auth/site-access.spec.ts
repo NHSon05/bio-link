@@ -140,12 +140,17 @@ test("ACCESS-2 OWN-1 a verified registration starts with no sites and creates it
   await expect(page).toHaveURL("/");
   await expectAwaitingAccess(page);
 
-  // Chọn template, đặt slug, rồi vào thẳng trình sửa của trang mới.
+  // Chọn template trên lưới, đặt slug, rồi vào thẳng trình sửa của trang mới.
+  const picker = page.getByRole("group", { name: "Template" });
+  await expect(picker.getByRole("button", { name: /^Classic/ })).toHaveAttribute("aria-pressed", "true");
+  await picker.getByRole("button", { name: /^Shop grid/ }).click();
+  await expect(picker.getByRole("button", { name: /^Shop grid/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByLabel("Slug", { exact: true }).fill(firstSite);
   await page.getByRole("button", { name: "Tạo trang", exact: true }).click();
   await expect(page).toHaveURL(`/?tab=bio&slug=${firstSite}`);
   await expect(page.getByRole("textbox", { name: "Tên", exact: true })).toHaveValue(firstSite);
   await expect(page.getByRole("textbox", { name: "Tên", exact: true })).toBeEditable();
+  expect((await (await page.request.get(`/api/sites/${firstSite}`)).json()).template).toBe("shop-grid");
 });
 
 test("ACCESS-2 a first Google sign-in starts with zero site access", async ({ page }) => {

@@ -1,5 +1,6 @@
 import { REGIONS, layoutOf, type Block, type RegionName, type Site } from "@bio-link/schema";
-import { templates, templateIds } from "@bio-link/templates";
+import { templates } from "@bio-link/templates";
+import { TemplatePicker } from "@/components/workspace/template-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,39 +124,14 @@ export function Design({ draft, update, locked }: { draft: Site; update: UpdateD
   return (
     <>
       <Panel title="Mẫu thiết kế" hint={tpl.description}>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          {templateIds.map((id) => (
-            <Button
-              variant="ghost"
-              key={id}
-              type="button"
-              aria-pressed={draft.template === id}
-              onClick={() =>
-                update((d) => {
-                  d.template = id;
-                })
-              }
-              className={cn(
-                "flex h-auto flex-col items-start gap-1 rounded-[22px] border-thick border-transparent bg-muted p-3 text-left text-sm font-semibold",
-                draft.template === id && "border-olive bg-accent",
-              )}
-            >
-              <span className="template-sample" data-layout={templates[id].desktop} aria-hidden>
-                <i />
-                <span>
-                  <b />
-                  <b />
-                  <b />
-                  <b />
-                </span>
-              </span>
-              {templates[id].name}
-              <small className="text-2xs leading-snug font-normal text-muted-foreground">
-                {{ center: "Một cột", split: "Chia đôi", grid: "Dạng lưới" }[templates[id].desktop]}
-              </small>
-            </Button>
-          ))}
-        </div>
+        <TemplatePicker
+          value={draft.template}
+          onChange={(id) =>
+            update((d) => {
+              d.template = id;
+            })
+          }
+        />
       </Panel>
 
       <Panel title="Giao diện" hint="Để trống = mặc định của template.">
